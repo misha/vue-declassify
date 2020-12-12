@@ -55,7 +55,7 @@ export function classToObject(source: SourceFile) {
   const requirements = extract(source)
 
   if (!requirements) {
-    return false
+    return
   }
 
   const { declaration, decorator } = requirements
@@ -89,6 +89,4 @@ export function classToObject(source: SourceFile) {
     isExportEquals: false,
     expression: print(component),
   }).formatText()
-
-  return true
 }
