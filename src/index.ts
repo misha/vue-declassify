@@ -1,15 +1,8 @@
-import { TSESTree, AST_NODE_TYPES, parse, simpleTraverse } from '@typescript-eslint/typescript-estree'
+import { SourceFile } from 'ts-morph'
+import { removeImport, ensureImport } from './operations/imports'
 
-export function declassify(source: string): string {
-  const ast = parse(source, {
-    loc: true,
-    range: true,
-  })
-
-  function enter(node: TSESTree.Node, parent: TSESTree.Node) {
-    console.log(node.type)
-  }
-
-  simpleTraverse(ast, { enter }, true)
-  return source
+export function declassify(source: SourceFile) {
+  removeImport(source, 'vue-class-component')
+  removeImport(source, 'vue-property-decorator')
+  ensureImport(source, 'vue', { default: 'Vue' })
 }

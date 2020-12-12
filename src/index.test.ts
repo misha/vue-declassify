@@ -1,22 +1,39 @@
-import test from 'ava'
+import test, { ExecutionContext } from 'ava'
+import { NewLineKind, Project, QuoteKind } from 'ts-morph'
 
 import { declassify } from './index'
 
-test('can declassify an empty component', t => {
+const project = new Project({
+  skipAddingFilesFromTsConfig: true,
+  skipFileDependencyResolution: true,
+  skipLoadingLibFiles: true,
+  manipulationSettings: {
+    insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces: true,
+    newLineKind: NewLineKind.LineFeed,
+    quoteKind: QuoteKind.Single,
+  },
+  useInMemoryFileSystem: true,
+})
+
+function validate<T>(context: ExecutionContext<T>, source: string, truth: string) {
+  const file = project.createSourceFile('test.ts', source.trim(), {
+    overwrite: true
+  })
+
+  declassify(file)
+  const result = file.getFullText()
+  context.is(result.trim(), truth.trim())
+}
+
+test('rewrites class-component library imports to a single Vue import', t => {
   const source = `
-    import { Component, Vue } from 'vue-property-decorator'
-  
-    @Component()
-    export default class MyComponent extends Vue {
-      
-    }
-  `.trim()
+    import { Component, Vue } from 'vue-property-decorator';
+    import Vue, { Component } from 'vue-class-component';
+  `
 
-  const expected = `
-    import Vue from 'vue'
+  const truth = `
+    import Vue from 'vue';
+  `
 
-    export default Vue.extend({})
-  `.trim()
-
-  t.deepEqual(declassify(source), expected)
+  validate(t, source, truth)
 })
