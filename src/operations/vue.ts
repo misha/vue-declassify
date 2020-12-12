@@ -141,8 +141,10 @@ export function classToObject(source: SourceFile) {
   declaration.remove()
 
   // Add the new default export statement, printing from the object AST.
-  source.addExportAssignment({
-    isExportEquals: false,
-    expression: print(component),
-  }).formatText()
+  source
+    .addExportAssignment({
+      expression: print(component),
+      isExportEquals: false,
+    })
+    .formatText()
 }
