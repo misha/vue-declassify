@@ -35,12 +35,12 @@ import { Component, Vue } from 'vue-property-decorator';
   t.throws(() => validate(t, source, ''))
 })
 
-test('rewrites an empty class-based component to an empty object component', t => {
+test('writes the component name correctly', t => {
   const source = `
 import { Component, Vue } from 'vue-property-decorator';
 
 @Component
-export default class Empty extends Vue {
+export default class Component extends Vue {
 
 }
   `
@@ -49,7 +49,38 @@ export default class Empty extends Vue {
 import Vue from 'vue';
 
 export default Vue.extend({
-  name: 'Empty'
+  name: 'Component'
+});
+  `
+
+  validate(t, source, truth)
+})
+
+test('writes properties in the @Component decorator correctly', t => {
+  const source = `
+import { Component, Vue } from 'vue-property-decorator';
+
+import OtherComponent from '../common/OtherComponent.vue';
+
+@Component({
+  components: {
+    OtherComponent,
+  }
+})
+export default class Component extends Vue {
+
+}
+  `
+
+  const truth = `
+import OtherComponent from '../common/OtherComponent.vue';
+import Vue from 'vue';
+
+export default Vue.extend({
+  name: 'Component',
+  components: {
+    OtherComponent,
+  }
 });
   `
 

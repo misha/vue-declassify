@@ -1,24 +1,26 @@
 import { ImportDeclaration, SourceFile } from 'ts-morph'
 
-function findImport(source: SourceFile, module: string): ImportDeclaration | undefined {
+function find(source: SourceFile, module: string): ImportDeclaration | undefined {
   return source.getImportDeclaration(declaration => {
     return declaration.getModuleSpecifierValue() === module
   })
 }
 
-export function removeImport(source: SourceFile, module: string) {
-  const declaration = findImport(source, module)
-
-  if (declaration) {
-    declaration.remove()
+export function remove(source: SourceFile, ...modules: string[]) {
+  for (const module of modules) {
+    const declaration = find(source, module)
+  
+    if (declaration) {
+      declaration.remove()
+    }
   }
 }
 
-export function ensureImport(source: SourceFile, module: string, imports: {
+export function ensure(source: SourceFile, module: string, imports: {
   default?: string,
   named?: string[],
 }) {
-  let declaration = findImport(source, module)
+  let declaration = find(source, module)
 
   if (!declaration) {
     declaration = source.addImportDeclaration({
