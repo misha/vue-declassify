@@ -30,7 +30,7 @@
     "dev": "ts-node ./src/cli.ts",
     "clean": "rimraf ./dist/ ./exec/",
     "build": "npm run clean && tsc",
-    "test": "ava",
+    "test": "ava --verbose",
     "bundle": "npm run build && pkg . --out-dir ./exec/"
   },
   "dependencies": {

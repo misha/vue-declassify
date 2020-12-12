@@ -1,5 +1,5 @@
 import test, { ExecutionContext } from 'ava'
-import { NewLineKind, Project, QuoteKind } from 'ts-morph'
+import { IndentationText, NewLineKind, Project, QuoteKind } from 'ts-morph'
 
 import { declassify } from './index'
 
@@ -11,6 +11,8 @@ const project = new Project({
     insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces: true,
     newLineKind: NewLineKind.LineFeed,
     quoteKind: QuoteKind.Single,
+    useTrailingCommas: false,
+    indentationText: IndentationText.TwoSpaces,
   },
   useInMemoryFileSystem: true,
 })
@@ -25,14 +27,30 @@ function validate<T>(context: ExecutionContext<T>, source: string, truth: string
   context.is(result.trim(), truth.trim())
 }
 
-test('rewrites class-component library imports to a single Vue import', t => {
+test('fails when the source is missing a default export', t => {
   const source = `
-    import { Component, Vue } from 'vue-property-decorator';
-    import Vue, { Component } from 'vue-class-component';
+import { Component, Vue } from 'vue-property-decorator';
+  `
+
+  t.throws(() => validate(t, source, ''))
+})
+
+test('rewrites an empty class-based component to an empty object component', t => {
+  const source = `
+import { Component, Vue } from 'vue-property-decorator';
+
+@Component
+export default class Empty extends Vue {
+
+}
   `
 
   const truth = `
-    import Vue from 'vue';
+import Vue from 'vue';
+
+export default Vue.extend({
+  name: 'Empty'
+});
   `
 
   validate(t, source, truth)
