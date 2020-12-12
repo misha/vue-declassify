@@ -1,0 +1,49 @@
+{
+  "name": "vue-declassify",
+  "version": "1.0.0",
+  "author": "Misha Soliterman <msoliter@gmail.com>",
+  "description": "Convert Vue 2 class-based components into object-based syntax.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/misha/vue-declassify.git"
+  },
+  "keywords": [
+    "vue",
+    "vue2",
+    "class",
+    "object",
+    "refactor",
+    "declassify"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/misha/vue-declassify/issues"
+  },
+  "homepage": "https://github.com/misha/vue-declassify#README",
+  "main": "./dist/index.js",
+  "bin": "./dist/cli.js",
+  "files": [
+    "dist/**/*",
+    "!dist/**/*.test.js"
+  ],
+  "scripts": {
+    "dev": "ts-node ./src/cli.ts",
+    "clean": "rimraf ./dist/ ./exec/",
+    "build": "npm run clean && tsc",
+    "test": "npm run build && ava --verbose",
+    "bundle": "npm run build && pkg . --out-dir ./exec/"
+  },
+  "dependencies": {
+    "@typescript-eslint/typescript-estree": "^4.9.1",
+    "commander": "^6.2.0",
+    "eslint": "^7.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^14.14.12",
+    "ava": "^3.14.0",
+    "pkg": "^4.4.9",
+    "rimraf": "^3.0.2",
+    "ts-node": "^9.1.1",
+    "typescript": "^4.1.3"
+  }
+}
