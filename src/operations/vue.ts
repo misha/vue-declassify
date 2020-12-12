@@ -1,4 +1,4 @@
-import { ClassDeclaration, Decorator, SourceFile, SyntaxKind, ts } from 'ts-morph'
+import { ClassDeclaration, ClassInstancePropertyTypes, Decorator, ObjectLiteralExpression, PropertyDeclaration, SourceFile, SyntaxKind, ts } from 'ts-morph'
 
 const scratchpad = ts.createSourceFile('', '', ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS)
 const printer = ts.createPrinter()
@@ -33,22 +33,62 @@ function extract(source: SourceFile) {
 }
 
 function unpackDecorator(decorator: Decorator) {
-  let decoratorConfig = ts.factory.createObjectLiteralExpression()
+  let decoratorConfig: ObjectLiteralExpression | undefined = undefined
   const decoratorArguments = decorator.getArguments()
 
   if (decoratorArguments.length > 0) {
     const initialDecoratorArgument = decoratorArguments[0]
 
-    if (initialDecoratorArgument.getKind() !== SyntaxKind.ObjectLiteralExpression) {
+    if (initialDecoratorArgument instanceof ObjectLiteralExpression) {
+      decoratorConfig = initialDecoratorArgument
+    
+    } else {
       throw new Error('The first argument to @Component is not an object literal.')
     }
-
-    decoratorConfig = initialDecoratorArgument.compilerNode as ts.ObjectLiteralExpression
   }
 
   return {
     decoratorConfig,
   }
+}
+
+function unpackClass(declaration: ClassDeclaration) {
+  const props: {
+    property: PropertyDeclaration
+    decorator: Decorator
+  }[] = []
+
+  const data: PropertyDeclaration[] = []
+
+  for (const property of declaration.getInstanceProperties()) {
+    if (property instanceof PropertyDeclaration) {
+      const decorator = property.getDecorator('Prop')
+      
+      if (decorator) {
+        props.push({
+          property: property as PropertyDeclaration,
+          decorator,
+        })
+
+      } else {
+        data.push(property)
+      }
+    }
+  }
+
+  return {
+    props,
+  }
+}
+
+function classPropToObjectProp(property: PropertyDeclaration, decorator: Decorator) {
+  return ts.factory.createPropertyAssignment(
+    ts.factory.createIdentifier(property.getName()),
+    ts.factory.createObjectLiteralExpression(
+      [],
+      true,
+    ),
+  )
 }
 
 export function classToObject(source: SourceFile) {
@@ -60,6 +100,7 @@ export function classToObject(source: SourceFile) {
 
   const { declaration, decorator } = requirements
   const { decoratorConfig } = unpackDecorator(decorator)
+  const { props } = unpackClass(declaration)
   
   const properties: ts.ObjectLiteralElementLike[] = []
 
@@ -71,8 +112,23 @@ export function classToObject(source: SourceFile) {
     )
   )
 
-  // Add any properties we inherited from the original decorator's configuration.
-  properties.push(...decoratorConfig.properties)
+  // Add any properties we inherited from the @Component decorator
+  if (decoratorConfig) {
+    properties.push(...decoratorConfig.compilerNode.properties)
+  }
+
+  // Construct the props using any @Prop-annotated fields.
+  if (props.length > 0) {
+    properties.push(
+      ts.factory.createPropertyAssignment(
+        ts.factory.createIdentifier('props'),
+        ts.factory.createObjectLiteralExpression(
+          props.map(prop => classPropToObjectProp(prop.property, prop.decorator)),
+          true,
+        ),
+      )
+    )
+  }
 
   // Wrap the properties up in a call to Vue.extend().
   const component = ts.factory.createCallExpression(

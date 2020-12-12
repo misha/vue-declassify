@@ -24,7 +24,17 @@ function validate<T>(context: ExecutionContext<T>, source: string, truth: string
 
   declassify(file)
   const result = file.getFullText()
-  context.is(result.trim(), truth.trim())
+  context.is(result.trim(), truth.trim(), `
+Truth
+=====
+
+${truth}
+
+Result
+======
+
+${result}
+  `.trim())
 }
 
 test('removes class-based component library imports', t => {
