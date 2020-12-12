@@ -27,18 +27,30 @@ function validate<T>(context: ExecutionContext<T>, source: string, truth: string
   context.is(result.trim(), truth.trim())
 }
 
-test('fails when the source is missing a default export', t => {
+test('removes class-based component library imports', t => {
   const source = `
-import { Component, Vue } from 'vue-property-decorator';
+import { Component, Vue } from 'vue-class-component';
+import { Component, Prop, Vue } from 'vue-property-decorator';
   `
 
-  t.throws(() => validate(t, source, ''))
+  const truth = `
+import Vue from 'vue';
+  `
+
+  validate(t, source, truth)
 })
 
-test('writes the component name correctly', t => {
+test('only adds the Vue import if necessary', t => {
   const source = `
-import { Component, Vue } from 'vue-property-decorator';
+import Vue from 'vue'
+  `
 
+  const truth = source
+  validate(t, source, truth)
+})
+
+test('writes the class name as the component name', t => {
+  const source = `
 @Component
 export default class Component extends Vue {
 
@@ -56,12 +68,9 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
+
 test('writes properties in the @Component decorator correctly', t => {
   const source = `
-import { Component, Vue } from 'vue-property-decorator';
-
-import OtherComponent from '../common/OtherComponent.vue';
-
 @Component({
   components: {
     OtherComponent,
@@ -73,7 +82,6 @@ export default class Component extends Vue {
   `
 
   const truth = `
-import OtherComponent from '../common/OtherComponent.vue';
 import Vue from 'vue';
 
 export default Vue.extend({

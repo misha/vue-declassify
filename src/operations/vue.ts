@@ -11,19 +11,19 @@ function extract(source: SourceFile) {
   const defaultExport = source.getDefaultExportSymbol()
 
   if (!defaultExport) {
-    throw new Error('No default export. Is this really a Vue component?')
+    return
   }
 
   const declaration = defaultExport.getValueDeclaration() as ClassDeclaration
 
   if (declaration.getKind() !== SyntaxKind.ClassDeclaration) {
-    throw new Error('Default export isn\'t a class. Already declassified?')
+    return
   }
 
   const decorator = declaration.getDecorator('Component')
 
   if (!decorator) {
-    throw new Error('No @Component decorator. Already declassified?')
+    return
   }
 
   return {
@@ -52,7 +52,13 @@ function unpackDecorator(decorator: Decorator) {
 }
 
 export function classToObject(source: SourceFile) {
-  const { declaration, decorator } = extract(source)
+  const requirements = extract(source)
+
+  if (!requirements) {
+    return false
+  }
+
+  const { declaration, decorator } = requirements
   const { decoratorConfig } = unpackDecorator(decorator)
   
   const properties: ts.ObjectLiteralElementLike[] = []
@@ -83,4 +89,6 @@ export function classToObject(source: SourceFile) {
     isExportEquals: false,
     expression: print(component),
   }).formatText()
+
+  return true
 }
