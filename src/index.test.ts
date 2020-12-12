@@ -69,7 +69,7 @@ export default Vue.extend({
 })
 
 
-test('writes properties in the @Component decorator correctly', t => {
+test('passes along configuration from the @Component decorator', t => {
   const source = `
 @Component({
   components: {
@@ -90,6 +90,54 @@ export default Vue.extend({
     OtherComponent,
   }
 });
+  `
+
+  validate(t, source, truth)
+})
+
+test('converts @Prop-decorated fields to props', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+
+  @Prop()
+  message?: string
+
+  @Prop({ required: true })
+  count!: number
+
+  @Prop()
+  response!: Response
+
+  @Prop({ default: () => noop })
+  onClick!: () => Promise<void>
+}
+  `
+
+  const truth = `
+import Vue, { PropType } from 'vue';
+
+export default Vue.extend({
+  name: 'Component',
+  props: {
+    message: {
+      type: String,
+      required: false,
+    },
+    count: {
+      type: Number,
+      required: true,
+    },
+    response: {
+      type: Object as PropType<Response>,
+      required: true,
+    },
+    onClick: {
+      type: Function as PropType<() => Promise<void>>,
+      default: () => noop,
+    },
+  }
+})
   `
 
   validate(t, source, truth)
