@@ -43,18 +43,27 @@ function classPropToObjectProp(prop: {
   return f.createPropertyAssignment(
     f.createIdentifier(prop.name),
     f.createObjectLiteralExpression(
-      _.compact([
+      [
         classPropTypeToObjectPropType(prop.type),
-        prop.required ?
-          prop.required.compilerNode :
-          // When required is neither true nor false, mark it as false.
-          // This is consistent with the vue-property-decorator defaults.
+        // Only permit exactly one of `default` and `required`,
+        // since a default value implies required is false in Vue.
+        (prop.default && 
+          // Note: I really want to just pass the compiler node, but
+          // for some reason `default` is special and does not render.
+          // Probably has to do with `default` being a TS keyword.
           f.createPropertyAssignment(
-            f.createIdentifier('required'),
-            f.createFalse(),
-          ),
-        prop?.default?.compilerNode,
-      ]),
+            f.createIdentifier('default'),
+            f.createIdentifier(prop.default.getInitializer().getText()),
+          )
+        ) || 
+        prop.required?.compilerNode ||
+        // Lastly, if `required` is not directly supplied, mark it as false.
+        // This is consistent with the vue-property-decorator defaults.
+        f.createPropertyAssignment(
+          f.createIdentifier('required'),
+          f.createFalse(),
+        )
+      ],
       true,
     ),
   )

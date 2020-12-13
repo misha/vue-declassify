@@ -145,3 +145,58 @@ export default Vue.extend({
 
   validate(t, source, truth)
 })
+
+test('converts prop options correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+
+  @Prop()
+  a?: boolean
+
+  @Prop({ required: false })
+  b?: boolean
+
+  @Prop({ required: true })
+  c!: boolean
+
+  @Prop({ default: 'Hello, world!' })
+  d!: boolean
+
+  @Prop({ default: 'Hello, world!', required: true })
+  e!: boolean
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+
+export default Vue.extend({
+  name: 'Component',
+  props: {
+    a: {
+      type: Boolean,
+      required: false
+    },
+    b: {
+      type: Boolean,
+      required: false
+    },
+    c: {
+      type: Boolean,
+      required: true
+    },
+    d: {
+      type: Boolean,
+      default: 'Hello, world!'
+    },
+    e: {
+      type: Boolean,
+      default: 'Hello, world!'
+    }
+  }
+});
+  `
+
+  validate(t, source, truth)
+})
