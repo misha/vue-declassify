@@ -1,5 +1,5 @@
 import _ from 'lodash'
-import { PropertyAssignment, SourceFile, ts, Type, TypeNode } from 'ts-morph'
+import { PropertyAssignment, PropertyDeclaration, SourceFile, ts, Type, TypeNode } from 'ts-morph'
 
 import * as vue_class from './vue_class'
 import * as imports from './imports'
@@ -13,11 +13,13 @@ function print(node: ts.Node, hint: ts.EmitHint = ts.EmitHint.Unspecified) {
 }
 
 function classPropTypeToObjectPropType(
-  source: SourceFile, 
-  typeNode: TypeNode,
+  source: SourceFile,
+  prop: {
+    declaration: PropertyDeclaration
+  }
 ): ts.PropertyAssignment {
   let initializer: ts.Expression
-  const type = typeNode.getType()
+  const type = prop.declaration.getType()
 
   if (type.isString()) {
     initializer = f.createIdentifier('String')
@@ -38,7 +40,7 @@ function classPropTypeToObjectPropType(
       f.createTypeReferenceNode(
         f.createIdentifier('PropType'),
         [
-          typeNode.compilerNode
+          prop.declaration.getTypeNode().compilerNode
         ]
       )
     )
@@ -53,17 +55,16 @@ function classPropTypeToObjectPropType(
 function classPropToObjectProp(
   source: SourceFile,
   prop: {
-    name: string
-    type: TypeNode
+    declaration: PropertyDeclaration
     default?: PropertyAssignment
     required?: PropertyAssignment
   }
 ) {
   return f.createPropertyAssignment(
-    f.createIdentifier(prop.name),
+    f.createIdentifier(prop.declaration.getName()),
     f.createObjectLiteralExpression(
       [
-        classPropTypeToObjectPropType(source, prop.type),
+        classPropTypeToObjectPropType(source, prop),
         // Only permit exactly one of `default` and `required`,
         // since a default value implies required is false in Vue.
         (prop.default && 

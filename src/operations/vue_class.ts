@@ -133,16 +133,14 @@ function unpackWatchDecorator(decorator: Decorator) {
 // Unpacks a Vue class declaration into its Vue properties.
 function unpackClass(declaration: ClassDeclaration) {
   const props: {
-    name: string
-    type: TypeNode
+    declaration: PropertyDeclaration
     default?: PropertyAssignment
     required?: PropertyAssignment
   }[] = []
 
   const syncProps: {
-    name: string
+    declaration: PropertyDeclaration
     sync: string
-    type: TypeNode
     default?: PropertyAssignment
     required?: PropertyAssignment
   }[] = []
@@ -175,8 +173,7 @@ function unpackClass(declaration: ClassDeclaration) {
         
         if (decorator) {
           props.push({
-            name,
-            type,
+            declaration: property,
             ...unpackPropDecorator(decorator),
           })
   
@@ -189,8 +186,7 @@ function unpackClass(declaration: ClassDeclaration) {
 
         if (decorator) {
           syncProps.push({
-            name,
-            type,
+            declaration: property,
             ...unpackPropSyncDecorator(decorator),
           })
           
