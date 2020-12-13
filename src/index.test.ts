@@ -105,13 +105,19 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test('converts props with type `string` correctly', t => {
+test('converts props with primitive types correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
 
   @Prop()
   message?: string
+
+  @Prop()
+  count?: number
+
+  @Prop()
+  flag?: boolean
 }
   `
 
@@ -123,6 +129,14 @@ export default Vue.extend({
   props: {
     message: {
       type: String,
+      required: false
+    },
+    count: {
+      type: Number,
+      required: false
+    },
+    flag: {
+      type: Boolean,
       required: false
     }
   }
