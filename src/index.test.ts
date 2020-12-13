@@ -365,6 +365,13 @@ export default class Component extends Vue {
    * This is like, some super important property.
    */
   x = 10
+
+  /**
+   * Here's another one!
+   * 
+   * Hope you read it all...
+   */
+  y = 'test'
 }
   `
 
@@ -378,7 +385,13 @@ export default Vue.extend({
       /**
        * This is like, some super important property.
        */
-      x: 10
+      x: 10,
+      /**
+       * Here's another one!
+       *
+       * Hope you read it all...
+       */
+      y: 'test'
     };
   }
 });
