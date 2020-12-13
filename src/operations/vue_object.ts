@@ -1,15 +1,31 @@
-import _, { assign } from 'lodash'
-import { PropertyAssignment, PropertyDeclaration, SourceFile, SyntaxKind, ts, Type, TypeNode } from 'ts-morph'
+import { JSDoc, printNode, PropertyAssignment, PropertyDeclaration, SourceFile, SyntaxKind, ts } from 'ts-morph'
 
 import * as vue_class from './vue_class'
 import * as imports from './imports'
 
 const f = ts.factory
-const scratchpad = ts.createSourceFile('', '', ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS)
-const printer = ts.createPrinter()
 
-function print(node: ts.Node, hint: ts.EmitHint = ts.EmitHint.Unspecified) {
-  return printer.printNode(hint, node, scratchpad)
+function createDocumentation<T extends ts.Node>(target: T, docs: JSDoc[]) {
+  
+  // Unclear how to directly plop an entire, pre-rendered comment in front.
+  // Forced to re-process the comment line-by-line to work with MultiLineCommentTriva.
+  if (docs.length > 0) {
+    return ts.addSyntheticLeadingComment(
+      target, 
+      SyntaxKind.MultiLineCommentTrivia, 
+      '*\n' + // Starts with '/*'
+        docs[0]
+          .compilerNode
+          .comment
+          .split('\n')
+          .map(line => ` * ${line}`)
+          .join('\n')
+      + '\n ', // Ends with '*/' 
+      true,
+    )
+  }
+
+  return target
 }
 
 function classPropTypeToObjectPropType(
@@ -52,6 +68,45 @@ function classPropTypeToObjectPropType(
   )
 }
 
+function classPropOptionsToObjectPropOptions(
+  source: SourceFile,
+  prop: {
+    default?: PropertyAssignment
+    required?: PropertyAssignment
+  }
+): ts.PropertyAssignment[] {
+  
+  // Only permit exactly one of `default` and `required`,
+  // since a default value implies required is false in Vue.
+  // There actually doesn't seem to be a use-case to set both!
+  if (prop.default) {
+    
+    // Note: I really want to just pass the compiler node, but
+    // for some reason `default` is special and does not render.
+    // Probably has to do with `default` being a TS keyword.
+    return [
+      f.createPropertyAssignment(
+        f.createIdentifier('default'),
+        f.createIdentifier(prop.default.getInitializer().getText()),
+      )
+    ]
+
+  } else if (prop.required) {
+    return [prop.required.compilerNode]
+
+  } else {
+
+    // Lastly, if neither property is directly supplied, mark `required` false.
+    // This is consistent with the vue-property-decorator defaults.
+    return [
+      f.createPropertyAssignment(
+        f.createIdentifier('required'),
+        f.createFalse(),
+      )
+    ]
+  }
+}
+
 function classPropToObjectProp(
   source: SourceFile,
   prop: {
@@ -59,56 +114,20 @@ function classPropToObjectProp(
     default?: PropertyAssignment
     required?: PropertyAssignment
   }
-) {
-  const assignment = f.createPropertyAssignment(
-    f.createIdentifier(prop.declaration.getName()),
-    f.createObjectLiteralExpression(
-      [
-        classPropTypeToObjectPropType(source, prop),
-        // Only permit exactly one of `default` and `required`,
-        // since a default value implies required is false in Vue.
-        (prop.default && 
-          // Note: I really want to just pass the compiler node, but
-          // for some reason `default` is special and does not render.
-          // Probably has to do with `default` being a TS keyword.
-          f.createPropertyAssignment(
-            f.createIdentifier('default'),
-            f.createIdentifier(prop.default.getInitializer().getText()),
-          )
-        ) || 
-        prop.required?.compilerNode ||
-        // Lastly, if `required` is not directly supplied, mark it as false.
-        // This is consistent with the vue-property-decorator defaults.
-        f.createPropertyAssignment(
-          f.createIdentifier('required'),
-          f.createFalse(),
-        )
-      ],
-      true,
+): ts.PropertyAssignment {
+  return createDocumentation(
+    f.createPropertyAssignment(
+      f.createIdentifier(prop.declaration.getName()),
+      f.createObjectLiteralExpression(
+        [
+          classPropTypeToObjectPropType(source, prop),
+          ...classPropOptionsToObjectPropOptions(source, prop),
+        ],
+        true,
+      ),
     ),
+    prop.declaration.getJsDocs(),
   )
-
-  const firstJsDoc = prop.declaration.getJsDocs()[0]
-
-  if (firstJsDoc) {
-
-    // Unclear how to directly plop an entire, pre-rendered comment in front.
-    // Forced to re-process the comment line-by-line to work with MultiLineCommentTriva.
-    ts.addSyntheticLeadingComment(
-      assignment, 
-      SyntaxKind.MultiLineCommentTrivia, 
-      '*\n' + // Starts with '/*'
-        firstJsDoc
-          .getInnerText()
-          .split('\n')
-          .map(line => ` * ${line}`)
-          .join('\n')
-      + '\n ', // Ends with '*/' 
-      true,
-    )
-  }
-
-  return assignment
 }
 
 export function classToObject(source: SourceFile) {
@@ -153,14 +172,26 @@ export function classToObject(source: SourceFile) {
     [f.createObjectLiteralExpression(properties, true)]
   )
 
-  // Remove the class now that we're done porting it to the statement.
+  // Save the docs.
+  let documentation: string
+
+  if (vue.declaration.getJsDocs().length > 0) {
+    documentation = vue.declaration.getJsDocs()[0].getFullText()
+  }
+
+  // Remove the class now that we're done reading everything.
   vue.declaration.remove()
 
   // Add the new default export statement, printing from the object AST.
-  source
+  const exportedComponent = source
     .addExportAssignment({
-      expression: print(component),
+      expression: printNode(component),
       isExportEquals: false,
+      leadingTrivia: writer => {
+        if (documentation) {
+          writer.writeLine(documentation)
+        }
+      }
     })
     .formatText()
 }

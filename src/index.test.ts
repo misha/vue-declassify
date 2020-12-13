@@ -242,6 +242,30 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
+test('converts components with comments correctly', t => {
+  const source = `
+/**
+ * This is my component!
+ */
+@Component
+export default class Component extends Vue {
+
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+
+/**
+ * This is my component!
+ */
+export default Vue.extend({
+  name: 'Component'
+});
+  `
+
+  validate(t, source, truth)
+})
 
 test('converts props with comments correctly', t => {
   const source = `
