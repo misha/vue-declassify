@@ -304,3 +304,31 @@ export default Vue.extend({
 
   validate(t, source, truth)
 })
+
+test('converts data correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+  x = 5
+  y: string = 'test'
+  z: number | null = null
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+
+export default Vue.extend({
+  name: 'Component',
+  data() {
+    return {
+      x: 5,
+      y: 'test',
+      z: null as number | null
+    }
+  }
+});
+  `
+
+  validate(t, source, truth)
+})

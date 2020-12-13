@@ -10,19 +10,21 @@ function createDocumentation<T extends ts.Node>(target: T, docs: JSDoc[]) {
   // Unclear how to directly plop an entire, pre-rendered comment in front.
   // Forced to re-process the comment line-by-line to work with MultiLineCommentTriva.
   if (docs.length > 0) {
-    return ts.addSyntheticLeadingComment(
-      target, 
-      SyntaxKind.MultiLineCommentTrivia, 
-      '*\n' + // Starts with '/*'
-        docs[0]
-          .compilerNode
-          .comment
-          .split('\n')
-          .map(line => ` * ${line}`)
-          .join('\n')
-      + '\n ', // Ends with '*/' 
-      true,
-    )
+    const comment = docs[0].compilerNode.comment
+
+    if (comment) {
+      return ts.addSyntheticLeadingComment(
+        target, 
+        SyntaxKind.MultiLineCommentTrivia, 
+        '*\n' + // Starts with '/*'
+          comment
+            .split('\n')
+            .map(line => ` * ${line}`)
+            .join('\n')
+        + '\n ', // Ends with '*/' 
+        true,
+      )
+    }
   }
 
   return target
@@ -56,7 +58,7 @@ function classPropTypeToObjectPropType(
       f.createTypeReferenceNode(
         f.createIdentifier('PropType'),
         [
-          prop.declaration.getTypeNode().compilerNode
+          prop.declaration.getTypeNodeOrThrow().compilerNode
         ]
       )
     )
@@ -87,7 +89,7 @@ function classPropOptionsToObjectPropOptions(
     return [
       f.createPropertyAssignment(
         f.createIdentifier('default'),
-        f.createIdentifier(prop.default.getInitializer().getText()),
+        f.createIdentifier(prop.default.getInitializerOrThrow().getText()),
       )
     ]
 
@@ -143,7 +145,7 @@ export function classToObject(source: SourceFile) {
   properties.push(
     f.createPropertyAssignment(
       f.createIdentifier('name'),
-      f.createStringLiteral(vue.declaration.getName(), true),
+      f.createStringLiteral(vue.declaration.getNameOrThrow(), true),
     )
   )
 

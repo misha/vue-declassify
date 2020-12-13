@@ -161,13 +161,6 @@ function unpackClass(declaration: ClassDeclaration) {
 
   for (const property of declaration.getInstanceProperties()) {
     if (property instanceof PropertyDeclaration) {
-      const name = property.getName()
-      const type = property.getTypeNode()
-
-      if (!type) {
-        throw new Error('An @Prop does not have a declared type.')
-      }
-
       {
         const decorator = property.getDecorator('Prop')
         
