@@ -1,7 +1,8 @@
 import _ from 'lodash'
-import { PropertyAssignment, SourceFile, ts, Type } from 'ts-morph'
+import { PropertyAssignment, SourceFile, ts, Type, TypeNode } from 'ts-morph'
 
 import * as vue_class from './vue_class'
+import * as imports from './imports'
 
 const f = ts.factory
 const scratchpad = ts.createSourceFile('', '', ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS)
@@ -11,8 +12,12 @@ function print(node: ts.Node, hint: ts.EmitHint = ts.EmitHint.Unspecified) {
   return printer.printNode(hint, node, scratchpad)
 }
 
-function classPropTypeToObjectPropType(type: Type): ts.PropertyAssignment {
+function classPropTypeToObjectPropType(
+  source: SourceFile, 
+  typeNode: TypeNode,
+): ts.PropertyAssignment {
   let initializer: ts.Expression
+  const type = typeNode.getType()
 
   if (type.isString()) {
     initializer = f.createIdentifier('String')
@@ -22,10 +27,21 @@ function classPropTypeToObjectPropType(type: Type): ts.PropertyAssignment {
   
   } else if (type.isBoolean()) {
     initializer = f.createIdentifier('Boolean')
-  }
 
-  if (!initializer) {
-    throw new Error(`Failed to write a PropType for type: ${type}`)
+  } else {
+    imports.ensure(source, 'vue', {
+      named: ['PropType'],
+    })
+
+    initializer = f.createAsExpression(
+      f.createIdentifier('Object'),
+      f.createTypeReferenceNode(
+        f.createIdentifier('PropType'),
+        [
+          typeNode.compilerNode
+        ]
+      )
+    )
   }
 
   return f.createPropertyAssignment(
@@ -34,17 +50,20 @@ function classPropTypeToObjectPropType(type: Type): ts.PropertyAssignment {
   )
 }
 
-function classPropToObjectProp(prop: {
-  name: string
-  type: Type
-  default?: PropertyAssignment
-  required?: PropertyAssignment
-}) {
+function classPropToObjectProp(
+  source: SourceFile,
+  prop: {
+    name: string
+    type: TypeNode
+    default?: PropertyAssignment
+    required?: PropertyAssignment
+  }
+) {
   return f.createPropertyAssignment(
     f.createIdentifier(prop.name),
     f.createObjectLiteralExpression(
       [
-        classPropTypeToObjectPropType(prop.type),
+        classPropTypeToObjectPropType(source, prop.type),
         // Only permit exactly one of `default` and `required`,
         // since a default value implies required is false in Vue.
         (prop.default && 
@@ -95,7 +114,7 @@ export function classToObject(source: SourceFile) {
       f.createPropertyAssignment(
         f.createIdentifier('props'),
         f.createObjectLiteralExpression(
-          vue.props.map(classPropToObjectProp),
+          vue.props.map(prop => classPropToObjectProp(source, prop)),
           true,
         ),
       )

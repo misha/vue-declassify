@@ -200,3 +200,44 @@ export default Vue.extend({
 
   validate(t, source, truth)
 })
+
+test('converts props with non-primitive types correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+
+  @Prop({ required: true })
+  model!: Model
+
+  @Prop({ required: true })
+  items!: Item[]
+
+  @Prop({ default: () => noop })
+  callback!: () => Promise<void>
+}
+  `
+
+  const truth = `
+import Vue, { PropType } from 'vue';
+
+export default Vue.extend({
+  name: 'Component',
+  props: {
+    model: {
+      type: (Object as PropType<Model>),
+      required: true
+    },
+    items: {
+      type: (Object as PropType<Item[]>),
+      required: true
+    },
+    callback: {
+      type: (Object as PropType<() => Promise<void>>),
+      default: () => noop
+    }
+  }
+});
+  `
+
+  validate(t, source, truth)
+})

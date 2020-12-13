@@ -1,4 +1,4 @@
-import { ClassDeclaration, Decorator, GetAccessorDeclaration, MethodDeclaration, ObjectLiteralExpression, PropertyAssignment, PropertyDeclaration, SetAccessorDeclaration, SourceFile, StringLiteral, Type } from 'ts-morph'
+import { ClassDeclaration, Decorator, GetAccessorDeclaration, MethodDeclaration, ObjectLiteralExpression, PropertyAssignment, PropertyDeclaration, SetAccessorDeclaration, SourceFile, StringLiteral, TypeNode } from 'ts-morph'
 
 function unpackComponentDecorator(decorator: Decorator) {
   const decoratorArguments = decorator.getArguments()
@@ -134,7 +134,7 @@ function unpackWatchDecorator(decorator: Decorator) {
 function unpackClass(declaration: ClassDeclaration) {
   const props: {
     name: string
-    type: Type
+    type: TypeNode
     default?: PropertyAssignment
     required?: PropertyAssignment
   }[] = []
@@ -142,7 +142,7 @@ function unpackClass(declaration: ClassDeclaration) {
   const syncProps: {
     name: string
     sync: string
-    type: Type
+    type: TypeNode
     default?: PropertyAssignment
     required?: PropertyAssignment
   }[] = []
@@ -164,7 +164,7 @@ function unpackClass(declaration: ClassDeclaration) {
   for (const property of declaration.getInstanceProperties()) {
     if (property instanceof PropertyDeclaration) {
       const name = property.getName()
-      const type = property.getType()
+      const type = property.getTypeNode()
 
       if (!type) {
         throw new Error('An @Prop does not have a declared type.')
