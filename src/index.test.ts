@@ -105,49 +105,28 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test('converts @Prop-decorated fields to props', t => {
+test('converts props with type `string` correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
 
   @Prop()
   message?: string
-
-  @Prop({ required: true })
-  count!: number
-
-  @Prop()
-  response!: Response
-
-  @Prop({ default: () => noop })
-  onClick!: () => Promise<void>
 }
   `
 
   const truth = `
-import Vue, { PropType } from 'vue';
+import Vue from 'vue';
 
 export default Vue.extend({
   name: 'Component',
   props: {
     message: {
       type: String,
-      required: false,
-    },
-    count: {
-      type: Number,
-      required: true,
-    },
-    response: {
-      type: Object as PropType<Response>,
-      required: true,
-    },
-    onClick: {
-      type: Function as PropType<() => Promise<void>>,
-      default: () => noop,
-    },
+      required: false
+    }
   }
-})
+});
   `
 
   validate(t, source, truth)
