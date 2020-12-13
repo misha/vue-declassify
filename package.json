@@ -31,7 +31,7 @@
     "clean": "rimraf ./dist/ ./exec/",
     "build": "npm run clean && tsc",
     "test": "ava --verbose",
-    "test:watch": "ava --watch --verbose",
+    "test:watch": "ava --watch",
     "bundle": "npm run build && pkg . --out-dir ./exec/"
   },
   "dependencies": {

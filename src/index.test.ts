@@ -25,7 +25,6 @@ function validate<T>(context: ExecutionContext<T>, source: string, truth: string
   declassify(file)
   const result = file.getFullText()
   context.is(result.trim(), truth.trim(), `
-  
 Truth
 =====
 
@@ -305,13 +304,12 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test('converts data correctly', t => {
+test('converts simple data correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
   x = 5
   y: string = 'test'
-  z: number | null = null
 }
   `
 
@@ -323,9 +321,34 @@ export default Vue.extend({
   data() {
     return {
       x: 5,
-      y: 'test',
-      z: null as number | null
-    }
+      y: 'test'
+    };
+  }
+});
+  `
+
+  validate(t, source, truth)
+})
+
+test('converts union-typed data correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+  x: string | null = null
+}
+  `
+
+  // Kind of weird, but there doesn't seem to be an option to get
+  // rid of the extraneous parenthesis around the cast for `x`.
+  const truth = `
+import Vue from 'vue';
+
+export default Vue.extend({
+  name: 'Component',
+  data() {
+    return {
+      x: (null as string | null)
+    };
   }
 });
   `

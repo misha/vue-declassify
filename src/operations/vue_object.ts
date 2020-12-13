@@ -1,4 +1,4 @@
-import { JSDoc, printNode, PropertyAssignment, PropertyDeclaration, SourceFile, SyntaxKind, ts } from 'ts-morph'
+import { ClassDeclaration, JSDoc, printNode, PropertyAssignment, PropertyDeclaration, SourceFile, SyntaxKind, ts } from 'ts-morph'
 
 import * as vue_class from './vue_class'
 import * as imports from './imports'
@@ -28,6 +28,18 @@ function createDocumentation<T extends ts.Node>(target: T, docs: JSDoc[]) {
   }
 
   return target
+}
+
+function classNameToPropName(
+  source: SourceFile,
+  vue: {
+    declaration: ClassDeclaration,
+  }
+): ts.PropertyAssignment {
+  return f.createPropertyAssignment(
+    f.createIdentifier('name'),
+    f.createStringLiteral(vue.declaration.getNameOrThrow(), true),
+  )
 }
 
 function classPropTypeToObjectPropType(
@@ -132,6 +144,92 @@ function classPropToObjectProp(
   )
 }
 
+function classPropsToObjectProps(
+  source: SourceFile,
+  vue: {
+    props: {
+      declaration: PropertyDeclaration
+      default?: PropertyAssignment
+      required?: PropertyAssignment
+    }[]
+  }
+): ts.PropertyAssignment {
+  return f.createPropertyAssignment(
+    f.createIdentifier('props'),
+    f.createObjectLiteralExpression(
+      vue.props.map(prop => classPropToObjectProp(source, prop)),
+      true,
+    ),
+  )
+}
+
+function classDataToObjectData(
+  source: SourceFile,
+  vue: {
+    data: PropertyDeclaration[],
+  },
+): ts.MethodDeclaration {
+  const properties: ts.ObjectLiteralElementLike[] = []
+
+  for (const declaration of vue.data) {
+    const initializer = declaration.getInitializerOrThrow()
+
+    // Ok, this is a bit of a hack. I'm unable to check if the
+    // declaration's type is a union or not (ie. isUnion() always
+    // returns false). But, Vue data is only ever union-ed with null
+    // anyway, and moreover only as an initial condition, so if the
+    // initializer is null... that's exactly when we need the union
+    // type `as` clause to help Vue out.
+
+    // For posterity, the union check that doesn't seem to work is:
+    //  => declaration.getType().isUnion()
+    //  <= false
+    // If the above code worked for actual union types, this would clean up.
+    
+    if (!initializer.getType().isNull()) {
+      properties.push(
+        f.createPropertyAssignment(
+          declaration.getName(),
+          f.createIdentifier(initializer.getText()),
+        )
+      )
+
+    } else {
+      properties.push(
+        f.createPropertyAssignment(
+          declaration.getName(),
+          f.createAsExpression(
+            f.createIdentifier(initializer.getText()),
+            declaration.getTypeNodeOrThrow().compilerNode,
+          )
+        )
+      )
+    }
+  }
+  
+  return f.createMethodDeclaration(
+    undefined,
+    undefined,
+    undefined,
+    f.createIdentifier('data'),
+    undefined,
+    undefined,
+    [],
+    undefined,
+    f.createBlock(
+      [
+        f.createReturnStatement(
+          f.createObjectLiteralExpression(
+            properties,
+            true,
+          )
+        ),
+      ],
+      true,
+    )
+  )
+}
+
 export function classToObject(source: SourceFile) {
   const vue = vue_class.extract(source)
 
@@ -140,37 +238,24 @@ export function classToObject(source: SourceFile) {
   }
 
   const properties: ts.ObjectLiteralElementLike[] = []
-
-  // Write the component name as the former class name.
-  properties.push(
-    f.createPropertyAssignment(
-      f.createIdentifier('name'),
-      f.createStringLiteral(vue.declaration.getNameOrThrow(), true),
-    )
-  )
+  properties.push(classNameToPropName(source, vue))
 
   // Add any properties we inherited from the @Component decorator.
   // Note: this doesn't merge any Vue data that occurs in the class declaration.
   properties.push(...vue.decorator.properties.map(property => property.compilerNode))
 
   if (vue.props.length > 0) {
-    properties.push(
-      f.createPropertyAssignment(
-        f.createIdentifier('props'),
-        f.createObjectLiteralExpression(
-          vue.props.map(prop => classPropToObjectProp(source, prop)),
-          true,
-        ),
-      )
-    )
+    properties.push(classPropsToObjectProps(source, vue))
+  }
 
-    // TODO: handle @PropSync-generated props.
+  if (vue.data.length > 0) {
+    properties.push(classDataToObjectData(source, vue))
   }
 
   // Wrap the properties up in a call to Vue.extend().
   const component = f.createCallExpression(
     f.createIdentifier('Vue.extend'),
-    [],
+    undefined,
     [f.createObjectLiteralExpression(properties, true)]
   )
 
@@ -185,15 +270,15 @@ export function classToObject(source: SourceFile) {
   vue.declaration.remove()
 
   // Add the new default export statement, printing from the object AST.
-  const exportedComponent = source
-    .addExportAssignment({
-      expression: printNode(component),
-      isExportEquals: false,
-      leadingTrivia: writer => {
-        if (documentation) {
-          writer.writeLine(documentation)
-        }
+  source.addExportAssignment({
+    expression: printNode(component),
+    isExportEquals: false,
+    leadingTrivia: writer => {
+      if (documentation) {
+        writer.writeLine(documentation)
       }
-    })
-    .formatText()
+    }
+  })
+    
+  source.formatText()
 }
