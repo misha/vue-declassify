@@ -1,5 +1,5 @@
-import _ from 'lodash'
-import { PropertyAssignment, PropertyDeclaration, SourceFile, ts, Type, TypeNode } from 'ts-morph'
+import _, { assign } from 'lodash'
+import { PropertyAssignment, PropertyDeclaration, SourceFile, SyntaxKind, ts, Type, TypeNode } from 'ts-morph'
 
 import * as vue_class from './vue_class'
 import * as imports from './imports'
@@ -60,7 +60,7 @@ function classPropToObjectProp(
     required?: PropertyAssignment
   }
 ) {
-  return f.createPropertyAssignment(
+  const assignment = f.createPropertyAssignment(
     f.createIdentifier(prop.declaration.getName()),
     f.createObjectLiteralExpression(
       [
@@ -87,6 +87,28 @@ function classPropToObjectProp(
       true,
     ),
   )
+
+  const firstJsDoc = prop.declaration.getJsDocs()[0]
+
+  if (firstJsDoc) {
+
+    // Unclear how to directly plop an entire, pre-rendered comment in front.
+    // Forced to re-process the comment line-by-line to work with MultiLineCommentTriva.
+    ts.addSyntheticLeadingComment(
+      assignment, 
+      SyntaxKind.MultiLineCommentTrivia, 
+      '*\n' + // Starts with '/*'
+        firstJsDoc
+          .getInnerText()
+          .split('\n')
+          .map(line => ` * ${line}`)
+          .join('\n')
+      + '\n ', // Ends with '*/' 
+      true,
+    )
+  }
+
+  return assignment
 }
 
 export function classToObject(source: SourceFile) {

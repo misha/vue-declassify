@@ -241,3 +241,41 @@ export default Vue.extend({
 
   validate(t, source, truth)
 })
+
+
+test('converts props with comments correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+
+  /**
+   * Some sort of flag.
+   * 
+   * Note: This is a note.
+   */
+  @Prop({ required: false })
+  flag?: boolean
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+
+export default Vue.extend({
+  name: 'Component',
+  props: {
+    /**
+     * Some sort of flag.
+     *
+     * Note: This is a note.
+     */
+    flag: {
+      type: Boolean,
+      required: false
+    }
+  }
+});
+  `
+
+  validate(t, source, truth)
+})
