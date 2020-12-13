@@ -186,25 +186,23 @@ function classDataToObjectData(
     //  <= false
     // If the above code worked for actual union types, this would clean up.
     
-    if (!initializer.getType().isNull()) {
-      properties.push(
+    properties.push(
+      createDocumentation(
         f.createPropertyAssignment(
           declaration.getName(),
-          f.createIdentifier(initializer.getText()),
-        )
-      )
-
-    } else {
-      properties.push(
-        f.createPropertyAssignment(
-          declaration.getName(),
-          f.createAsExpression(
+          // Here's the part that should really be declaration.getType().isUnion().
+          initializer.getType().isNull() ?
+            // Add an `as` cast to include the null type, however it was written.
+            f.createAsExpression(
+              f.createIdentifier(initializer.getText()),
+              declaration.getTypeNodeOrThrow().compilerNode,
+            ) :
+            // Otherwise we can just include the original initialize as-is.
             f.createIdentifier(initializer.getText()),
-            declaration.getTypeNodeOrThrow().compilerNode,
-          )
-        )
+        ),
+        declaration.getJsDocs(),
       )
-    }
+    )
   }
   
   return f.createMethodDeclaration(

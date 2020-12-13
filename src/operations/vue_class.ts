@@ -1,4 +1,4 @@
-import { ClassDeclaration, Decorator, GetAccessorDeclaration, MethodDeclaration, ObjectLiteralExpression, PropertyAssignment, PropertyDeclaration, SetAccessorDeclaration, SourceFile, StringLiteral, TypeNode } from 'ts-morph'
+import { ClassDeclaration, Decorator, GetAccessorDeclaration, MethodDeclaration, ObjectLiteralExpression, PropertyAssignment, PropertyDeclaration, SetAccessorDeclaration, SourceFile, StringLiteral } from 'ts-morph'
 
 function unpackComponentDecorator(decorator: Decorator) {
   const decoratorArguments = decorator.getArguments()

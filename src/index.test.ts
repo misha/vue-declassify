@@ -355,3 +355,34 @@ export default Vue.extend({
 
   validate(t, source, truth)
 })
+
+test('converts data comments correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+
+  /**
+   * This is like, some super important property.
+   */
+  x = 10
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+
+export default Vue.extend({
+  name: 'Component',
+  data() {
+    return {
+      /**
+       * This is like, some super important property.
+       */
+      x: 10
+    };
+  }
+});
+  `
+
+  validate(t, source, truth)
+})
