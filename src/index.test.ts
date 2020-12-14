@@ -7,6 +7,7 @@ const project = new Project({
   skipAddingFilesFromTsConfig: true,
   skipFileDependencyResolution: true,
   skipLoadingLibFiles: true,
+  useInMemoryFileSystem: true,
   manipulationSettings: {
     insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces: true,
     newLineKind: NewLineKind.LineFeed,
@@ -14,16 +15,16 @@ const project = new Project({
     useTrailingCommas: false,
     indentationText: IndentationText.TwoSpaces,
   },
-  useInMemoryFileSystem: true,
 })
 
-function validate<T>(context: ExecutionContext<T>, source: string, truth: string) {
-  const file = project.createSourceFile('test.ts', source.trim(), {
-    overwrite: true
-  })
+function validate<T>(
+  context: ExecutionContext<T>, 
+  source: string, 
+  truth: string,
+  mode: 'ts' | 'vue' = 'ts',
+) {
 
-  declassify(file)
-  const result = file.getFullText()
+  const result = declassify(project, source.trim(), mode)
   context.is(result.trim(), truth.trim(), `
 Truth
 =====
@@ -36,6 +37,51 @@ Result
 ${result}
   `)
 }
+
+test('can also handle Vue SFC code', t => {
+  const source = `
+<template>
+  <div />
+</template>
+
+<script lang="ts">
+import { Component, Vue } from 'vue-property-decorator';
+
+@Component
+export default class SFCComponent extends Vue {
+  
+}
+</script>
+
+<style>
+div {
+  padding: 2px;
+}
+</style>
+  `
+
+  const truth = `
+<template>
+  <div />
+</template>
+
+<script lang="ts">
+import Vue from 'vue';
+
+export default Vue.extend({
+  name: 'SFCComponent'
+});
+</script>
+
+<style>
+div {
+  padding: 2px;
+}
+</style>
+  `
+
+  validate(t, source, truth, 'vue')
+})
 
 test('removes class-based component library imports', t => {
   const source = `

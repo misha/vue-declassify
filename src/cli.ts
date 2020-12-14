@@ -1,16 +1,26 @@
+import fs from 'fs'
+import path from 'path'
 import program from 'commander'
 import { IndentationText, NewLineKind, Project, QuoteKind } from 'ts-morph'
+import { declassify } from './index'
 
 program
   .name('vue-declassify')
   .version('1.0.0')
-  .command('transform <path>')
-  .description('Transforms the components of the target project.', {
-    path: 'The path of the project (must have a tsconfig.json).',
+  .command('declassify <component>', {
+    isDefault: true,
   })
-  .action(path => {
+  .description('rewrites the TypeScript Vue component to object-based syntax', {
+    component: 'path to the component (.ts or .vue file)',
+  })
+  .action((path: string) => {
     const project = new Project({
-      tsConfigFilePath: `${path}/tsconfig.json`,
+      skipAddingFilesFromTsConfig: true,
+      skipFileDependencyResolution: true,
+      skipLoadingLibFiles: true,
+      useInMemoryFileSystem: true,
+      // TODO: pass these options as CLI arguments.
+      // Until then, just change them for your projects before building.
       manipulationSettings: {
         newLineKind: NewLineKind.LineFeed,
         quoteKind: QuoteKind.Single,
@@ -18,8 +28,5 @@ program
         indentationText: IndentationText.TwoSpaces,
       },
     })
-
-    // Then presumably use this project to produce source files for declassify().
-    console.log(project.getSourceFiles().map(file => file.getFilePath()))
   })
   .parse(process.argv)
