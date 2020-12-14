@@ -1,5 +1,4 @@
 import fs from 'fs'
-import path from 'path'
 import program from 'commander'
 import { IndentationText, NewLineKind, Project, QuoteKind } from 'ts-morph'
 import { declassify } from './index'
@@ -20,7 +19,6 @@ program
       skipLoadingLibFiles: true,
       useInMemoryFileSystem: true,
       // TODO: pass these options as CLI arguments.
-      // Until then, just change them for your projects before building.
       manipulationSettings: {
         newLineKind: NewLineKind.LineFeed,
         quoteKind: QuoteKind.Single,
@@ -28,5 +26,23 @@ program
         indentationText: IndentationText.TwoSpaces,
       },
     })
+
+    let mode: 'ts' | 'vue'
+
+    if (path.endsWith('.vue')) {
+      mode = 'vue'
+
+    } else if (path.endsWith('.ts')) {
+      mode = 'ts'
+
+    } else {
+      throw new Error('Path doesn\'t seem to be a .ts or .vue file.')
+    }
+
+    // TODO: pass the encoding as a CLI argument.
+    const rwOptions = { encoding: 'utf-8' as const }
+    const code = fs.readFileSync(path, rwOptions)
+    fs.writeFileSync(path, declassify(project, code, mode), rwOptions)
+    console.log(`Successfully declassified ${path}!`)
   })
   .parse(process.argv)
