@@ -490,3 +490,48 @@ export default Vue.extend({
   
   validate(t, source, truth)
 })
+
+test('converts computed properties correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+
+  @Prop({ required: true })
+  model!: Model
+
+  get modelFlag() {
+    return this.model.flag
+  }
+
+  set modelFlag(value: boolean) {
+    this.model.flag = value
+  }
+}
+  `
+
+  const truth = `
+import Vue, { PropType } from 'vue';
+
+export default Vue.extend({
+  name: 'Component',
+  props: {
+    model: {
+      type: Object as PropType<Model>,
+      required: true
+    }
+  },
+  computed: {
+    modelFlag: {
+      get(): boolean {
+        return this.model.flag;
+      },
+      set(value: boolean) {
+        this.model.flag = value;
+      }
+    }
+  }
+});
+  `
+  
+  validate(t, source, truth)
+})

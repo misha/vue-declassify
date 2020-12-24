@@ -1,4 +1,4 @@
-import { ClassDeclaration, Expression, GetAccessorDeclaration, JSDoc, printNode, PropertyAssignment, PropertyDeclaration, SetAccessorDeclaration, SourceFile, SyntaxKind, ts, TypeNode } from 'ts-morph'
+import { ClassDeclaration, Expression, GetAccessorDeclaration, JSDoc, ParameterDeclaration, printNode, PropertyAssignment, PropertyDeclaration, SetAccessorDeclaration, SourceFile, SyntaxKind, ts, TypeNode } from 'ts-morph'
 
 import * as vue_class from './vue_class'
 import * as imports from './imports'
@@ -216,8 +216,8 @@ function classComputedToObjectComputed(
   source: SourceFile,
   vue: {
     computed: Record<string, {
-      get?: GetAccessorDeclaration
-      set?: SetAccessorDeclaration
+      getter?: GetAccessorDeclaration
+      setter?: SetAccessorDeclaration
     }>
   }
 ): ts.PropertyAssignment {
@@ -225,13 +225,13 @@ function classComputedToObjectComputed(
 
   for (let [name, computed] of Object.entries(vue.computed)) {
     const computedProperties: ts.ObjectLiteralElementLike[] = []
-    let setArgumentType: TypeNode | undefined = undefined
+    let setParameterType: ts.TypeNode | undefined = undefined
 
-    if (computed.set) {
-      const argument = computed.set.getParameters()[0]
+    if (computed.setter) {
+      const parameters = computed.setter.getParameters()
 
-      if (!argument) {
-        throw new Error('Computed setter doesn\'t seem to have an argument.')
+      if (parameters.length === 0) {
+        throw new Error('Computed setter doesn\'t seem to have a parameter.')
       }
 
       computedProperties.push(
@@ -242,14 +242,17 @@ function classComputedToObjectComputed(
           f.createIdentifier('set'),
           undefined,
           undefined,
-          [argument.compilerNode],
+          [parameters[0].compilerNode],
           undefined,
-          computed.set.getBodyOrThrow().compilerNode as ts.Block,
+          computed.setter.getBodyOrThrow().compilerNode as ts.Block,
         )
       )
+
+      // Save the parameter for re-use in a potential computed getter.
+      setParameterType = parameters[0].getTypeNodeOrThrow().compilerNode
     }
 
-    if (computed.get) {
+    if (computed.getter) {
       computedProperties.push(
         f.createMethodDeclaration(
           undefined,
@@ -259,8 +262,11 @@ function classComputedToObjectComputed(
           undefined,
           undefined,
           [],
-          undefined,
-          computed.get.getBodyOrThrow().compilerNode as ts.Block,
+          // If there was a computed setter, Vue requires that the getter have
+          // an annotated return type of the same type argument as that setter's
+          // parameter. This is where we ensure that.
+          setParameterType,
+          computed.getter.getBodyOrThrow().compilerNode as ts.Block,
         )
       )
     }
@@ -268,7 +274,8 @@ function classComputedToObjectComputed(
     properties.push(
       f.createPropertyAssignment(
         f.createIdentifier(name),
-        // Prefer the getter out in front.
+        // Prefer the getter out in front. (We only processed the setter first
+        // to cache the first parameter's type anyway.)
         f.createObjectLiteralExpression(computedProperties.reverse(), true),
       ),
     )
