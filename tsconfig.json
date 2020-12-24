@@ -6,5 +6,8 @@
     "target": "es6",
     "esModuleInterop": true,
     "strictNullChecks": true,
-  }
+  },
+  "exclude": [
+    "example/",
+  ],
 }
