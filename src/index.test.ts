@@ -260,6 +260,13 @@ export default class Component extends Vue {
 
   @Prop({ default: () => noop })
   callback!: () => Promise<void>
+
+  @Prop({ required: true })
+  data!: {
+    callback: () => Promise<void>
+    flag: boolean
+    value: number
+  }
 }
   `
 
@@ -274,12 +281,20 @@ export default Vue.extend({
       required: true
     },
     items: {
-      type: Object as PropType<Item[]>,
+      type: Array as PropType<Item[]>,
       required: true
     },
     callback: {
-      type: Object as PropType<() => Promise<void>>,
+      type: Function as PropType<() => Promise<void>>,
       default: () => noop
+    },
+    data: {
+      type: Object as PropType<{
+        callback: () => Promise<void>
+        flag: boolean
+        value: number
+      }>,
+      required: true
     }
   }
 });

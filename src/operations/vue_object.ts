@@ -64,10 +64,37 @@ function classPropTypeToObjectPropType(
       named: ['PropType'],
     })
 
+    const type = prop.declaration.getType()
+    const actualType = prop.declaration.getTypeNodeOrThrow().getText()
+
+    // Vue.js props can only be primitive types, unless you use PropType.
+    // However, even when using PropType, the base annotated type must be
+    // the same type as the annotated one, or you get type errors anyway.
+    let baseType: 'Object' | 'Function' | 'Array'
+
+    // HACK: Adjust Object/Function/Array based on what the type seems to be.
+    // This heuristic can be improved drastically, and is part of what makes
+    // a project like vue-declassify difficult. 
+    
+    if (type.getCallSignatures().length > 0) {
+
+      // This one is actually pretty safe. TS will tell us if what's inside has
+      // a call signature, making it a function.
+      baseType = 'Function'
+
+    } else if (actualType.startsWith('Array<') || actualType.endsWith('[]')) {
+
+      // This is some nonsense calculation but, it's quite effective? Arrays
+      // are easy to spot syntactically. This doesn't work for user-defined
+      // array types though. Fortunately, those are exceedingly rare.
+      baseType = 'Array'
+
+    } else {
+      baseType = 'Object'
+    }
+
     // HACK: Create a more concise `as` expression manually.
-    // TODO: Adjust Object/Function/Array based on a regular expression.
-    const type = prop.declaration.getTypeNodeOrThrow()
-    initializer = f.createIdentifier(`Object as PropType<${type.getText()}>`)
+    initializer = f.createIdentifier(`${baseType} as PropType<${actualType}>`)
   }
 
   return f.createPropertyAssignment(
@@ -225,7 +252,7 @@ function classComputedToObjectComputed(
 
   for (let [name, computed] of Object.entries(vue.computed)) {
     const computedProperties: ts.ObjectLiteralElementLike[] = []
-    let setParameterType: ts.TypeNode | undefined = undefined
+    let setParameter: ParameterDeclaration | undefined = undefined
 
     if (computed.setter) {
       const parameters = computed.setter.getParameters()
@@ -233,6 +260,9 @@ function classComputedToObjectComputed(
       if (parameters.length === 0) {
         throw new Error('Computed setter doesn\'t seem to have a parameter.')
       }
+
+      // Save the parameter for re-use in a potential computed getter.
+      setParameter = parameters[0]
 
       computedProperties.push(
         f.createMethodDeclaration(
@@ -242,17 +272,23 @@ function classComputedToObjectComputed(
           f.createIdentifier('set'),
           undefined,
           undefined,
-          [parameters[0].compilerNode],
+          [setParameter.compilerNode],
           undefined,
           computed.setter.getBodyOrThrow().compilerNode as ts.Block,
         )
       )
-
-      // Save the parameter for re-use in a potential computed getter.
-      setParameterType = parameters[0].getTypeNodeOrThrow().compilerNode
     }
 
     if (computed.getter) {
+      let getReturnType: ts.TypeNode | undefined = undefined
+  
+      // If there was a computed setter, Vue requires that the getter have
+      // an annotated return type of the same type argument as that setter's
+      // parameter. This is where we ensure that.
+      if (setParameter) {
+        getReturnType = setParameter.getTypeNodeOrThrow().compilerNode
+      }
+
       computedProperties.push(
         f.createMethodDeclaration(
           undefined,
@@ -262,10 +298,7 @@ function classComputedToObjectComputed(
           undefined,
           undefined,
           [],
-          // If there was a computed setter, Vue requires that the getter have
-          // an annotated return type of the same type argument as that setter's
-          // parameter. This is where we ensure that.
-          setParameterType,
+          getReturnType,
           computed.getter.getBodyOrThrow().compilerNode as ts.Block,
         )
       )
@@ -302,7 +335,7 @@ export function classToObject(source: SourceFile) {
   for (let property of vue.decorator.properties) {
     properties.push(property.compilerNode)
   }
-  
+
   if (vue.props.length > 0) {
     properties.push(classPropsToObjectProps(source, vue))
   }
