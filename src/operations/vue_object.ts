@@ -1,14 +1,13 @@
-import { ClassDeclaration, JSDoc, printNode, PropertyAssignment, PropertyDeclaration, SourceFile, SyntaxKind, ts } from 'ts-morph'
+import { ClassDeclaration, Expression, JSDoc, printNode, PropertyAssignment, PropertyDeclaration, SourceFile, SyntaxKind, ts, TypeNode } from 'ts-morph'
 
 import * as vue_class from './vue_class'
 import * as imports from './imports'
 
 const f = ts.factory
 
+// Unclear how to directly plop an entire, pre-rendered comment in front.
+// Forced to re-process the comment line-by-line to work with MultiLineCommentTriva.
 function createDocumentation<T extends ts.Node>(target: T, docs: JSDoc[]) {
-  
-  // Unclear how to directly plop an entire, pre-rendered comment in front.
-  // Forced to re-process the comment line-by-line to work with MultiLineCommentTriva.
   if (docs.length > 0) {
     const comment = docs[0].compilerNode.comment
 
@@ -65,15 +64,10 @@ function classPropTypeToObjectPropType(
       named: ['PropType'],
     })
 
-    initializer = f.createAsExpression(
-      f.createIdentifier('Object'),
-      f.createTypeReferenceNode(
-        f.createIdentifier('PropType'),
-        [
-          prop.declaration.getTypeNodeOrThrow().compilerNode
-        ]
-      )
-    )
+    // HACK: Create a more concise `as` expression manually.
+    // TODO: Adjust Object/Function/Array based on a regular expression.
+    const type = prop.declaration.getTypeNodeOrThrow()
+    initializer = f.createIdentifier(`Object as PropType<${type.getText()}>`)
   }
 
   return f.createPropertyAssignment(
@@ -163,6 +157,7 @@ function classPropsToObjectProps(
   )
 }
 
+
 function classDataToObjectData(
   source: SourceFile,
   vue: {
@@ -172,33 +167,22 @@ function classDataToObjectData(
   const properties: ts.ObjectLiteralElementLike[] = []
 
   for (const declaration of vue.data) {
-    const initializer = declaration.getInitializerOrThrow()
+    const value = declaration.getInitializerOrThrow()
+    const type = declaration.getTypeNode()
 
-    // Ok, this is a bit of a hack. I'm unable to check if the
-    // declaration's type is a union or not (ie. isUnion() always
-    // returns false). But, Vue data is only ever union-ed with null
-    // anyway, and moreover only as an initial condition, so if the
-    // initializer is null... that's exactly when we need the union
-    // type `as` clause to help Vue out.
+    // By default, initialize the data with whatever was on the other side of the declaration.
+    let initializer: ts.Expression = f.createIdentifier(value.getText())
 
-    // For posterity, the union check that doesn't seem to work is:
-    //  => declaration.getType().isUnion()
-    //  <= false
-    // If the above code worked for actual union types, this would clean up.
-    
+    // If there was a type declaration, port it to an `as` expression.
+    if (type) {
+      initializer = f.createIdentifier(`${value.getText()} as ${type.getText()}`)
+    }
+
     properties.push(
       createDocumentation(
         f.createPropertyAssignment(
           declaration.getName(),
-          // Here's the part that should really be declaration.getType().isUnion().
-          initializer.getType().isNull() ?
-            // Add an `as` cast to include the null type, however it was written.
-            f.createAsExpression(
-              f.createIdentifier(initializer.getText()),
-              declaration.getTypeNodeOrThrow().compilerNode,
-            ) :
-            // Otherwise we can just include the original initialize as-is.
-            f.createIdentifier(initializer.getText()),
+          initializer,
         ),
         declaration.getJsDocs(),
       )
