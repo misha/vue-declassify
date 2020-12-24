@@ -459,7 +459,7 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test('converts computed getters and setters correctly', t => {
+test('converts computed getters correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
@@ -471,8 +471,8 @@ export default class Component extends Vue {
     return this.model.flag
   }
 
-  set modelState(state: string) {
-    this.model.state = state
+  get annotatedModelFlag(): boolean {
+    return this.model.flag
   }
 }
   `
@@ -489,15 +489,11 @@ export default Vue.extend({
     }
   },
   computed: {
-    modelFlag: {
-      get() {
-        return this.model.flag;
-      }
+    modelFlag(): any {
+      return this.model.flag;
     },
-    modelState: {
-      set(state: string) {
-        this.model.state = state;
-      }
+    annotatedModelFlag(): boolean {
+      return this.model.flag;
     }
   }
 });
