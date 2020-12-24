@@ -444,7 +444,7 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test.skip('converts computed getters and setters correctly', t => {
+test('converts computed getters and setters correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
@@ -463,25 +463,25 @@ export default class Component extends Vue {
   `
 
   const truth = `
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 
 export default Vue.extend({
   name: 'Component',
   props: {
     model: {
-      type: Model,
+      type: Object as PropType<Model>,
       required: true
     }
   },
   computed: {
     modelFlag: {
       get() {
-        return this.model.flag
+        return this.model.flag;
       }
     },
     modelState: {
       set(state: string) {
-        this.model.state = state
+        this.model.state = state;
       }
     }
   }

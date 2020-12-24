@@ -149,8 +149,8 @@ function unpackClass(declaration: ClassDeclaration) {
   const methods: MethodDeclaration[] = []
   
   const computed: Record<string, {
-    getter?: GetAccessorDeclaration
-    setter?: SetAccessorDeclaration
+    get?: GetAccessorDeclaration
+    set?: SetAccessorDeclaration
   }> = {}
 
   const watch: Record<string, {
@@ -197,7 +197,7 @@ function unpackClass(declaration: ClassDeclaration) {
         computed[name] = {}
       }
       
-      computed[name].getter = property
+      computed[name].get = property
 
     } else if (property instanceof SetAccessorDeclaration) {
       const name = property.getName()
@@ -206,7 +206,7 @@ function unpackClass(declaration: ClassDeclaration) {
         computed[name] = {}
       }
 
-      computed[name].setter = property
+      computed[name].set = property
 
     } else if (property instanceof MethodDeclaration) {
       const decorator = property.getDecorator('Watch')

@@ -1,4 +1,4 @@
-import { ClassDeclaration, Expression, JSDoc, printNode, PropertyAssignment, PropertyDeclaration, SourceFile, SyntaxKind, ts, TypeNode } from 'ts-morph'
+import { ClassDeclaration, Expression, GetAccessorDeclaration, JSDoc, printNode, PropertyAssignment, PropertyDeclaration, SetAccessorDeclaration, SourceFile, SyntaxKind, ts, TypeNode } from 'ts-morph'
 
 import * as vue_class from './vue_class'
 import * as imports from './imports'
@@ -212,6 +212,74 @@ function classDataToObjectData(
   )
 }
 
+function classComputedToObjectComputed(
+  source: SourceFile,
+  vue: {
+    computed: Record<string, {
+      get?: GetAccessorDeclaration
+      set?: SetAccessorDeclaration
+    }>
+  }
+): ts.PropertyAssignment {
+  const properties: ts.ObjectLiteralElementLike[] = []
+
+  for (let [name, computed] of Object.entries(vue.computed)) {
+    const computedProperties: ts.ObjectLiteralElementLike[] = []
+    let setArgumentType: TypeNode | undefined = undefined
+
+    if (computed.set) {
+      const argument = computed.set.getParameters()[0]
+
+      if (!argument) {
+        throw new Error('Computed setter doesn\'t seem to have an argument.')
+      }
+
+      computedProperties.push(
+        f.createMethodDeclaration(
+          undefined,
+          undefined,
+          undefined,
+          f.createIdentifier('set'),
+          undefined,
+          undefined,
+          [argument.compilerNode],
+          undefined,
+          computed.set.getBodyOrThrow().compilerNode as ts.Block,
+        )
+      )
+    }
+
+    if (computed.get) {
+      computedProperties.push(
+        f.createMethodDeclaration(
+          undefined,
+          undefined,
+          undefined,
+          f.createIdentifier('get'),
+          undefined,
+          undefined,
+          [],
+          undefined,
+          computed.get.getBodyOrThrow().compilerNode as ts.Block,
+        )
+      )
+    }
+
+    properties.push(
+      f.createPropertyAssignment(
+        f.createIdentifier(name),
+        // Prefer the getter out in front.
+        f.createObjectLiteralExpression(computedProperties.reverse(), true),
+      ),
+    )
+  }
+
+  return f.createPropertyAssignment(
+    f.createIdentifier('computed'),
+    f.createObjectLiteralExpression(properties, true),
+  )
+}
+
 export function classToObject(source: SourceFile) {
   const vue = vue_class.extract(source)
 
@@ -232,6 +300,10 @@ export function classToObject(source: SourceFile) {
 
   if (vue.data.length > 0) {
     properties.push(classDataToObjectData(source, vue))
+  }
+
+  if (Object.keys(vue.computed).length > 0) {
+    properties.push(classComputedToObjectComputed(source, vue))
   }
 
   // Wrap the properties up in a call to Vue.extend().
