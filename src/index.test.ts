@@ -130,7 +130,7 @@ test('passes along configuration from the @Component decorator', t => {
 @Component({
   components: {
     OtherComponent,
-  }
+  },
 })
 export default class Component extends Vue {
 

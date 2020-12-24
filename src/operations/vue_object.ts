@@ -299,8 +299,10 @@ export function classToObject(source: SourceFile) {
 
   // Add any properties we inherited from the @Component decorator.
   // Note: this doesn't merge any Vue data that occurs in the class declaration.
-  properties.push(...vue.decorator.properties.map(property => property.compilerNode))
-
+  for (let property of vue.decorator.properties) {
+    properties.push(property.compilerNode)
+  }
+  
   if (vue.props.length > 0) {
     properties.push(classPropsToObjectProps(source, vue))
   }
