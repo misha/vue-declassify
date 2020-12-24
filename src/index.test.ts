@@ -445,3 +445,50 @@ export default Vue.extend({
 
   validate(t, source, truth)
 })
+
+test('converts computed getters and setters correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+
+  @Prop({ required: true })
+  model!: Model
+
+  get modelFlag() {
+    return this.model.flag
+  }
+
+  set modelState(state: string) {
+    this.model.state = state
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+
+export default Vue.extend({
+  name: 'Component',
+  props: {
+    model: {
+      type: Model,
+      required: true
+    }
+  },
+  computed: {
+    modelFlag: {
+      get() {
+        return this.model.flag
+      }
+    },
+    modelState: {
+      set(state: string) {
+        this.model.state = state
+      }
+    }
+  }
+});
+  `
+  
+  validate(t, source, truth)
+})
