@@ -5,14 +5,14 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 
-import OtherTest from './OtherTest.vue'
+import TestHelper from './TestHelper.vue'
 
 /**
  * This component's description.
  */
 @Component({
   components: {
-    OtherTest,
+    TestHelper,
   },
 })
 export default class Test extends Vue {
