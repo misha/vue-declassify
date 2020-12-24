@@ -514,12 +514,12 @@ export default class Component extends Vue {
   @Prop({ required: true })
   model!: Model
 
-  get modelFlag() {
-    return this.model.flag
+  get modelCount() {
+    return this.model.count
   }
 
-  set modelFlag(value: boolean) {
-    this.model.flag = value
+  set modelCount(value: number) {
+    this.model.count = value * 2
   }
 }
   `
@@ -536,12 +536,12 @@ export default Vue.extend({
     }
   },
   computed: {
-    modelFlag: {
-      get(): boolean {
-        return this.model.flag;
+    modelCount: {
+      get(): number {
+        return this.model.count;
       },
-      set(value: boolean) {
-        this.model.flag = value;
+      set(value: number) {
+        this.model.count = value * 2;
       }
     }
   }

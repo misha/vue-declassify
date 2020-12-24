@@ -1,4 +1,4 @@
-import { ClassDeclaration, Expression, GetAccessorDeclaration, JSDoc, ParameterDeclaration, printNode, PropertyAssignment, PropertyDeclaration, SetAccessorDeclaration, SourceFile, SyntaxKind, ts, TypeNode } from 'ts-morph'
+import { Block, ClassDeclaration, Expression, GetAccessorDeclaration, JSDoc, ParameterDeclaration, printNode, PropertyAssignment, PropertyDeclaration, SetAccessorDeclaration, SourceFile, SyntaxKind, ts, TypeNode } from 'ts-morph'
 
 import * as vue_class from './vue_class'
 import * as imports from './imports'
@@ -27,6 +27,22 @@ function createDocumentation<T extends ts.Node>(target: T, docs: JSDoc[]) {
   }
 
   return target
+}
+
+// Just passing the block compiler node makes it leave out all the values.
+// No idea what I'm doing wrong, but... hey, it works if you re-render everything
+// using getText()!
+function transformBlock(block: Block, multiline?: boolean): ts.Block {
+  return f.createBlock(
+    [
+      ...block
+        .getStatementsWithComments()
+        .map(statement => f.createExpressionStatement(
+          f.createIdentifier(statement.getText()),
+        )),
+    ],
+    true,
+  )
 }
 
 function classNameToPropName(
@@ -274,7 +290,7 @@ function classComputedToObjectComputed(
           undefined,
           [setParameter.compilerNode],
           undefined,
-          computed.setter.getBodyOrThrow().compilerNode as ts.Block,
+          transformBlock(computed.setter.getBodyOrThrow() as Block, true),
         )
       )
     }
@@ -299,7 +315,7 @@ function classComputedToObjectComputed(
           undefined,
           [],
           getReturnType,
-          computed.getter.getBodyOrThrow().compilerNode as ts.Block,
+          transformBlock(computed.getter.getBodyOrThrow() as Block),
         )
       )
     }
