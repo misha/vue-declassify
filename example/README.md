@@ -1,5 +1,18 @@
 # Example
 
-I use this project when doing demos of `vue-declassify`. It contains an example project that obtains stronger type safety by transforming its class-based components to object-based ones.
+This is a demo for `vue-declassify`. It contains an example class-based component that obtains stronger type safety by transforming back to object-based component syntax.
 
-The project is not meant to be built - just looked at from Visual Studio Code. As a result, I've removed any unnecessary build configuration files from the default Vue project skeleton.
+To run the example, first build the project in the root directory:
+
+```
+$ npm run build
+```
+
+Then, use `cli.js` to rewrite `Test.vue`:
+
+```
+$ node dist/cli.js example/src/components/Test.vue
+Successfully declassified example/src/components/Test.vue!
+```
+
+And look at the resulting, equivalent component.

@@ -1,8 +1,8 @@
 <template>
   <div id="app">
     <Test
-      :title="'test'"
-      :count="5"
+      :title="5"
+      :count="'test'"
     />
   </div>
 </template>
