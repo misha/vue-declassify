@@ -5,10 +5,16 @@
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
 
+import OtherTest from './OtherTest.vue'
+
 /**
  * This component's description.
  */
-@Component
+@Component({
+  components: {
+    OtherTest,
+  },
+})
 export default class Test extends Vue {
 
   /**
@@ -22,5 +28,10 @@ export default class Test extends Vue {
    */
   @Prop({ default: 5 })
   count!: number
+
+  /**
+   * Some messages to show the user.
+   */
+  internalMessages: string[] = []
 }
 </script>
