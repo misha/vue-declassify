@@ -4,60 +4,6 @@ import * as imports from './imports'
 
 type PostprocessCallback = (source: ts.SourceFile) => void
 
-// function classDataToObjectData(
-//   source: SourceFile,
-//   vue: {
-//     data: PropertyDeclaration[],
-//   },
-// ): ts.MethodDeclaration {
-//   const properties: ts.ObjectLiteralElementLike[] = []
-
-//   for (const declaration of vue.data) {
-//     const value = declaration.getInitializerOrThrow()
-//     const type = declaration.getTypeNode()
-
-//     // By default, initialize the data with whatever was on the other side of the declaration.
-//     let initializer: ts.Expression = f.createIdentifier(value.getText())
-
-//     // If there was a type declaration, port it to an `as` expression.
-//     if (type) {
-//       initializer = f.createIdentifier(`${value.getText()} as ${type.getText()}`)
-//     }
-
-//     properties.push(
-//       createDocumentation(
-//         f.createPropertyAssignment(
-//           declaration.getName(),
-//           initializer,
-//         ),
-//         declaration.getJsDocs(),
-//       )
-//     )
-//   }
-  
-//   return f.createMethodDeclaration(
-//     undefined,
-//     undefined,
-//     undefined,
-//     f.createIdentifier('data'),
-//     undefined,
-//     undefined,
-//     [],
-//     undefined,
-//     f.createBlock(
-//       [
-//         f.createReturnStatement(
-//           f.createObjectLiteralExpression(
-//             properties,
-//             true,
-//           )
-//         ),
-//       ],
-//       true,
-//     )
-//   )
-// }
-
 // function classComputedGetterToObjectComputedGetter(
 //   source: SourceFile,
 //   name: string,
@@ -244,7 +190,8 @@ function writeName(
   declaration: ts.ClassDeclaration,
 ) {
   writer
-    .write('name: ')
+    .write('name:')
+    .space()
     .quote()
       .write(declaration.getNameOrThrow())
     .quote()
@@ -275,7 +222,10 @@ function writeProps(
 
   if (props.length > 0) {
     writer
-      .writeLine('props: {')
+      .write('props:')
+      .space()
+      .write('{')
+      .newLine()
       .withIndentationLevel(1, () => {
         for (let prop of props) {
           callbacks.push(...writeProp(writer, prop))
@@ -283,6 +233,7 @@ function writeProps(
       })
       .write('}')
       .write(',')
+      .newLine()
   }
 
   return callbacks
@@ -300,7 +251,9 @@ function writeProp(
   writeDocs(writer, prop.declaration.getJsDocs())
 
   writer
-    .write(`${prop.declaration.getName()}: {`)
+    .write(`${prop.declaration.getName()}:`)
+    .space()
+    .write('{')
     .withIndentationLevel(1, () => {
       callbacks.push(...writePropType(writer, prop.declaration))
       writePropOptions(writer, prop)
@@ -408,7 +361,11 @@ function writeData(
   data: ts.PropertyDeclaration[]
 ) {
   if (data.length > 0) {
-    writer.writeLine('data() {')
+    writer
+      .writeLine('data()')
+      .space()
+      .write('{')
+      .newLine()
       .withIndentationLevel(1, () => {
         writer.writeLine('return {')
 
@@ -431,20 +388,90 @@ function writeDataProperty(
   writeDocs(writer, property.getJsDocs())
   writer
     .write(property.getName())
-    .write(': ')
+    .write(':')
+    .space()
     .write(property.getInitializerOrThrow().getText())
 
   const type = property.getTypeNode()
 
   if (type) {
     writer
-      .write(' as ')
+      .space()
+      .write('as')
+      .space()
       .write(type.getText())
   }
           
   writer
     .write(',')
     .newLine()
+}
+
+function writeComputed(
+  writer: ts.CodeBlockWriter,
+  computed: Record<string, {
+    getter?: ts.GetAccessorDeclaration
+    setter?: ts.SetAccessorDeclaration
+  }>
+) {
+  if (Object.keys(computed).length > 0) {
+    writer
+      .write('computed:')
+      .space()
+      .write('{')
+      .newLine()
+  
+    for (const [name, { getter, setter }] of Object.entries(computed)) {
+      if (getter) {
+        if (!setter) {
+          writeComputedGetter(writer, name, getter)
+
+        } else {
+          writeComputedProperty(writer, name, getter, setter)
+        }
+      }
+    }
+      
+    writer
+      .write('}')
+      .write(',')
+      .newLine()
+  }
+}
+
+function writeComputedGetter(
+  writer: ts.CodeBlockWriter,
+  name: string,
+  getter: ts.GetAccessorDeclaration,
+) {
+  writer
+    .write(`${name}()`)
+    .write(':')
+    .space()
+
+  const type = getter.getReturnTypeNode()
+
+  if (type) {
+    writer.write(type.getText())
+
+  } else {
+    writer.write('any')
+  }
+
+  writer
+    .space()
+    .write(getter.getBodyOrThrow().getText())
+    .write(',')
+    .newLine()
+}
+
+function writeComputedProperty(
+  writer: ts.CodeBlockWriter,
+  name: string,
+  getter: ts.GetAccessorDeclaration,
+  setter: ts.SetAccessorDeclaration
+) {
+
 }
 
 export function classToObject(source: ts.SourceFile) {
@@ -481,6 +508,7 @@ export function classToObject(source: ts.SourceFile) {
           writeConfig(writer, decorator)
           callbacks.push(...writeProps(writer, props))
           writeData(writer, data)
+          writeComputed(writer, computed)
         })
         .write('})')
     },
