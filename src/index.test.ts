@@ -384,7 +384,7 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test.skip('converts union-typed data correctly', t => {
+test('converts union-typed data correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
@@ -398,16 +398,16 @@ export default Vue.extend({
   name: 'Component',
   data() {
     return {
-      x: null as string | null
+      x: null as string | null,
     };
-  }
+  },
 });
   `
 
   validate(t, source, truth)
 })
 
-test.skip('converts data comments correctly', t => {
+test('converts data comments correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
@@ -441,9 +441,9 @@ export default Vue.extend({
        *
        * Hope you read it all...
        */
-      y: 'test'
+      y: 'test',
     };
-  }
+  },
 });
   `
 
