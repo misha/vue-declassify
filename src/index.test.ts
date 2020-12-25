@@ -507,38 +507,69 @@ test('converts computed properties correctly', t => {
 @Component
 export default class Component extends Vue {
 
-  @Prop({ required: true })
-  model!: Model
+  count = 0
 
-  get modelCount() {
-    return this.model.count
+  get offsetCount() {
+    return this.count + 1
   }
 
-  set modelCount(value: number) {
-    this.model.count = value * 2
+  set offsetCount(value: number) {
+    this.count = value - 1
   }
 }
   `
 
   const truth = `
-import Vue, { PropType } from 'vue';
+import Vue from 'vue';
 
 export default Vue.extend({
   name: 'Component',
-  props: {
-    model: {
-      type: Object as PropType<Model>,
-      required: true
-    }
+  data() {
+    return {
+      count: 0
+    };
   },
   computed: {
-    modelCount: {
+    offsetCount: {
       get(): number {
-        return this.model.count;
+        return this.count + 1;
       },
       set(value: number) {
-        this.model.count = value * 2;
+        this.count = value - 1;
       }
+    }
+  }
+});
+  `
+  
+  validate(t, source, truth)
+})
+
+test('converts methods correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+  onClick() {
+    console.log('Hello, world!')
+  }
+
+  async compute(): boolean {
+    return await sendCompute()
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+
+export default Vue.extend({
+  name: 'Component',
+  methods: {
+    onClick() {
+      console.log('Hello, world!');
+    },
+    async compute(): boolean {
+      return await sendCompute();
     }
   }
 });

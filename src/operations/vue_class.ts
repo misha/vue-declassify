@@ -170,7 +170,7 @@ function unpackClass(declaration: ClassDeclaration) {
             ...unpackPropDecorator(decorator),
           })
   
-          continue
+          continue // Processed it, so continue.
         }
       }
 
@@ -183,7 +183,7 @@ function unpackClass(declaration: ClassDeclaration) {
             ...unpackPropSyncDecorator(decorator),
           })
           
-          continue
+          continue // Processed it, so continue.
         }
       }
 
@@ -207,24 +207,25 @@ function unpackClass(declaration: ClassDeclaration) {
       }
 
       computed[name].setter = property
-
-    } else if (property instanceof MethodDeclaration) {
-      const decorator = property.getDecorator('Watch')
-      
-      if (decorator) {
-        const { path, ...configuration } = unpackWatchDecorator(decorator)
-
-        watch[path] = {
-          method: property,
-          ...configuration,
-        }
-
-      } else {
-        methods.push(property)
-      }
       
     } else {
       throw new Error(`Unexpected instance member of type: ${property.getKindName()}.`)
+    }
+  }
+
+  for (const method of declaration.getInstanceMethods()) {
+    const decorator = method.getDecorator('Watch')
+    
+    if (decorator) {
+      const { path, ...configuration } = unpackWatchDecorator(decorator)
+
+      watch[path] = {
+        method,
+        ...configuration,
+      }
+
+    } else {
+      methods.push(method)
     }
   }
 

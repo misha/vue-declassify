@@ -1,9 +1,13 @@
-import { Block, ClassDeclaration, Expression, GetAccessorDeclaration, JSDoc, ParameterDeclaration, printNode, PropertyAssignment, PropertyDeclaration, SetAccessorDeclaration, SourceFile, SyntaxKind, ts, TypeNode } from 'ts-morph'
+import { Block, ClassDeclaration, Expression, GetAccessorDeclaration, JSDoc, MethodDeclaration, Node, ParameterDeclaration, printNode, PropertyAssignment, PropertyDeclaration, SetAccessorDeclaration, SourceFile, SyntaxKind, ts, TypeNode } from 'ts-morph'
 
 import * as vue_class from './vue_class'
 import * as imports from './imports'
 
 const f = ts.factory
+
+function toTS<T extends ts.Node>(tsmorphNode: Node<T>): T {
+  return tsmorphNode.compilerNode
+} 
 
 // Unclear how to directly plop an entire, pre-rendered comment in front.
 // Forced to re-process the comment line-by-line to work with MultiLineCommentTriva.
@@ -388,6 +392,35 @@ function classComputedToObjectComputed(
   )
 }
 
+function classMethodsToObjectMethods(
+  source: SourceFile,
+  vue: {
+    methods: MethodDeclaration[]
+  }
+): ts.PropertyAssignment {
+  return f.createPropertyAssignment(
+    f.createIdentifier('methods'),
+    f.createObjectLiteralExpression(
+      vue.methods.map(method => 
+        // I really, really want to just pass the compiler node... but no dice.
+        // The values simply do not render.
+        f.createMethodDeclaration(
+          method.getDecorators()?.map(toTS),
+          method.getModifiers()?.map(modifier => modifier.compilerNode as ts.Modifier),
+          undefined,
+          f.createIdentifier(method.getName()),
+          undefined,
+          method.getTypeParameters()?.map(toTS),
+          method.getParameters()?.map(toTS),
+          method.getReturnTypeNode()?.compilerNode,
+          transformBlock(method.getBodyOrThrow() as Block, true),
+        ),
+      ),
+      true,
+    ),
+  )
+}
+
 export function classToObject(source: SourceFile) {
   const vue = vue_class.extract(source)
 
@@ -414,6 +447,10 @@ export function classToObject(source: SourceFile) {
 
   if (Object.keys(vue.computed).length > 0) {
     properties.push(classComputedToObjectComputed(source, vue))
+  }
+
+  if (vue.methods.length > 0) {
+    properties.push(classMethodsToObjectMethods(source, vue))
   }
 
   // Wrap the properties up in a call to Vue.extend().
