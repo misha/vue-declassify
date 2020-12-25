@@ -189,7 +189,7 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test.skip('converts prop options correctly', t => {
+test('converts prop options correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
@@ -213,38 +213,37 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   props: {
     a: {
       type: Boolean,
-      required: false
+      required: false,
     },
     b: {
       type: Boolean,
-      required: false
+      required: false,
     },
     c: {
       type: Boolean,
-      required: true
+      required: true,
     },
     d: {
       type: Boolean,
-      default: 'Hello, world!'
+      default: 'Hello, world!',
     },
     e: {
       type: Boolean,
-      default: 'Hello, world!'
-    }
-  }
+      default: 'Hello, world!',
+    },
+  },
 });
   `
 
   validate(t, source, truth)
 })
 
-test.skip('converts props with non-primitive types correctly', t => {
+test('converts props with non-primitive types correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
@@ -269,21 +268,20 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue, { PropType } from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   props: {
     model: {
       type: Object as PropType<Model>,
-      required: true
+      required: true,
     },
     items: {
       type: Array as PropType<Item[]>,
-      required: true
+      required: true,
     },
     callback: {
       type: Function as PropType<() => Promise<void>>,
-      default: () => noop
+      default: () => noop,
     },
     data: {
       type: Object as PropType<{
@@ -291,16 +289,16 @@ export default Vue.extend({
         flag: boolean
         value: number
       }>,
-      required: true
-    }
-  }
+      required: true,
+    },
+  },
 });
   `
 
   validate(t, source, truth)
 })
 
-test.skip('converts components with comments correctly', t => {
+test('converts components with comments correctly', t => {
   const source = `
 /**
  * This is my component!
@@ -313,12 +311,11 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 /**
  * This is my component!
  */
 export default Vue.extend({
-  name: 'Component'
+  name: 'Component',
 });
   `
 

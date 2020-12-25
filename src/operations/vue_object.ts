@@ -1,7 +1,8 @@
 import * as ts from 'ts-morph'
 import * as vue_class from './vue_class'
 import * as imports from './imports'
-import { write } from 'fs'
+
+type PostprocessCallback = (source: ts.SourceFile) => void
 
 // function toTS<T extends ts.Node>(tsmorphNode: Node<T>): T {
 //   return tsmorphNode.compilerNode
@@ -407,6 +408,15 @@ import { write } from 'fs'
 //   )
 // }
 
+function writeComponentDocs(
+  writer: ts.CodeBlockWriter,
+  declaration: ts.ClassDeclaration,
+) {
+  for (let jsDoc of declaration.getJsDocs()) {
+    writer.writeLine(jsDoc.getText())
+  }
+}
+
 function writeName(
   writer: ts.CodeBlockWriter,
   declaration: ts.ClassDeclaration,
@@ -432,51 +442,57 @@ function writeConfig(
 }
 
 function writeProps(
-  source: ts.SourceFile,
   writer: ts.CodeBlockWriter, 
   props: {
     declaration: ts.PropertyDeclaration
     required?: ts.PropertyAssignment
     default?: ts.PropertyAssignment
   }[]
-) {
+): PostprocessCallback[] {
+  const callbacks: PostprocessCallback[] = []
+
   if (props.length > 0) {
     writer
       .write('props: {')
       .withIndentationLevel(1, () => {
         for (let prop of props) {
-          writeProp(source, writer, prop)
+          callbacks.push(...writeProp(writer, prop))
         }
       })
       .write('},')
   }
+
+  return callbacks
 }
 
 function writeProp(
-  source: ts.SourceFile,
   writer: ts.CodeBlockWriter,
   prop: {
     declaration: ts.PropertyDeclaration
     required?: ts.PropertyAssignment
     default?: ts.PropertyAssignment
   }
-) {
+): PostprocessCallback[] {
+  const callbacks: PostprocessCallback[] = []
+
   writer
     .write(`${prop.declaration.getName()}: {`)
     .withIndentationLevel(1, () => {
-      writePropType(source, writer, prop.declaration)
+      callbacks.push(...writePropType(writer, prop.declaration))
       writePropOptions(writer, prop)
     })
     .write('}')
     .write(',')
     .newLine()
+
+  return callbacks
 }
 
 function writePropType(
-  source: ts.SourceFile,
   writer: ts.CodeBlockWriter,
   declaration: ts.PropertyDeclaration
-) {
+): PostprocessCallback[] {
+  const callbacks: PostprocessCallback[] = []
   const type = declaration.getType()
   writer.write('type: ')
 
@@ -490,10 +506,6 @@ function writePropType(
     writer.write('Boolean')
   
   } else {
-    imports.ensure(source, 'vue', {
-      named: ['PropType'],
-    })
-
     const actualType = declaration.getTypeNodeOrThrow().getText()
 
     // Vue.js props can only be primitive types, unless you use PropType.
@@ -522,13 +534,21 @@ function writePropType(
       baseType = 'Object'
     }
 
-    // HACK: Create a more concise `as` expression manually.
     writer.write(`${baseType} as PropType<${actualType}>`)
+
+    // Add PropType to the imports afterwards, since we just used it.
+    callbacks.push(source => {
+      imports.ensure(source, 'vue', {
+        named: ['PropType'],
+      })
+    })
   }
 
   writer
     .write(',')
     .newLine()
+
+  return callbacks
 }
 
 function writePropOptions(
@@ -570,6 +590,11 @@ export function classToObject(source: ts.SourceFile) {
     declaration,
     decorator,
     props,
+    data,
+    computed,
+    methods,
+    syncProps,
+    watch,
   } = vue
 
   // // Add any properties we inherited from the @Component decorator.
@@ -608,22 +633,32 @@ export function classToObject(source: ts.SourceFile) {
   //   documentation = vue.declaration.getJsDocs()[0].getFullText()
   // }
 
+  const callbacks: PostprocessCallback[] = [
+    source => source.formatText()
+  ]
+
   source.addExportAssignment({
+    leadingTrivia: writer => {
+      writeComponentDocs(writer, declaration)
+    },
     expression: writer => {
       writer
         .writeLine('Vue.extend({')
         .withIndentationLevel(1, () => {
           writeName(writer, declaration)
           writeConfig(writer, decorator)
-          writeProps(source, writer, props)
+          callbacks.push(...writeProps(writer, props))
         })
         .write('})')
     },
     isExportEquals: false,
   })
-    
-  source.formatText()
-  
+
+  // Perform any processing that had to happen after we finished writing.
+  for (let callback of callbacks.reverse()) {
+    callback(source)
+  }
+
   // Remove the class now that we're done reading everything.
   vue.declaration.remove()
 }
