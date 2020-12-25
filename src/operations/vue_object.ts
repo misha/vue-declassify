@@ -4,139 +4,6 @@ import * as imports from './imports'
 
 type PostprocessCallback = (source: ts.SourceFile) => void
 
-// function classComputedGetterToObjectComputedGetter(
-//   source: SourceFile,
-//   name: string,
-//   getter: GetAccessorDeclaration,
-// ): ts.MethodDeclaration {
-//   let getterReturnType: ts.TypeNode | undefined = undefined
-
-//   if (getter.getReturnTypeNode()) {
-//     getterReturnType = getter.getReturnTypeNodeOrThrow().compilerNode
-  
-//   } else {
-//     getterReturnType = f.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)
-//     console.log(`Computed getter 「${name}」 will require a manual return type.`)
-//   }
-
-//   return f.createMethodDeclaration(
-//     undefined,
-//     undefined,
-//     undefined,
-//     f.createIdentifier(name),
-//     undefined,
-//     undefined,
-//     [],
-//     getterReturnType,
-//     transformBlock(getter.getBodyOrThrow() as Block, true),
-//   )
-// }
-
-// function classComputedPropertyToObjectComputedProperty(
-//   source: SourceFile,
-//   name: string,
-//   getter: GetAccessorDeclaration,
-//   setter: SetAccessorDeclaration,
-// ): ts.PropertyAssignment {
-//   const setParameter = setter.getParameters()[0]
-
-//   if (!setParameter) {
-//     throw new Error('Computed setter doesn\'t seem to have a parameter.')
-//   }
-
-//   const setterDeclaration = f.createMethodDeclaration(
-//     undefined,
-//     undefined,
-//     undefined,
-//     f.createIdentifier('set'),
-//     undefined,
-//     undefined,
-//     [setParameter.compilerNode],
-//     undefined,
-//     transformBlock(setter.getBodyOrThrow() as Block, true),
-//   )
-
-//   let getterReturnType: ts.TypeNode | undefined = undefined
-
-//   // If there was a computed setter, Vue requires that the getter have
-//   // an annotated return type of the same type argument as that setter's
-//   // parameter. This is where we try to ensure that.
-//   if (setParameter.getTypeNode()) {
-//     getterReturnType = setParameter.getTypeNodeOrThrow().compilerNode
-
-//   } else {
-//     getterReturnType = f.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)
-//     console.log(`Computed getter for 「${name}」 will require a manual return type.`)
-//   }
-
-//   const getterDeclaration = f.createMethodDeclaration(
-//     undefined,
-//     undefined,
-//     undefined,
-//     f.createIdentifier('get'),
-//     undefined,
-//     undefined,
-//     [],
-//     getterReturnType,
-//     transformBlock(getter.getBodyOrThrow() as Block),
-//   )
-      
-//   return f.createPropertyAssignment(
-//     f.createIdentifier(name),
-//     f.createObjectLiteralExpression(
-//       [
-//         getterDeclaration,
-//         setterDeclaration,
-//       ], 
-//       true,
-//     ),
-//   )
-// }
-
-// function classComputedToObjectComputed(
-//   source: SourceFile,
-//   vue: {
-//     computed: Record<string, {
-//       getter?: GetAccessorDeclaration
-//       setter?: SetAccessorDeclaration
-//     }>
-//   }
-// ): ts.PropertyAssignment {
-//   const properties: ts.ObjectLiteralElementLike[] = []
-
-//   for (let [name, { getter, setter }] of Object.entries(vue.computed)) {
-//     if (getter) {
-//       if (setter) {
-//         properties.push(
-//           classComputedPropertyToObjectComputedProperty(
-//             source,
-//             name, 
-//             getter, 
-//             setter,
-//           ),
-//         )
-
-//       } else {
-//         properties.push(
-//           classComputedGetterToObjectComputedGetter(
-//             source, 
-//             name, 
-//             getter,
-//           ),
-//         )
-//       }
-
-//     } else if (setter) {
-//       throw new Error('Found an illegal computed setter without a getter.')
-//     }
-//   }
-
-//   return f.createPropertyAssignment(
-//     f.createIdentifier('computed'),
-//     f.createObjectLiteralExpression(properties, true),
-//   )
-// }
-
 // function classMethodsToObjectMethods(
 //   source: SourceFile,
 //   vue: {
@@ -439,39 +306,85 @@ function writeComputed(
   }
 }
 
-function writeComputedGetter(
-  writer: ts.CodeBlockWriter,
-  name: string,
-  getter: ts.GetAccessorDeclaration,
-) {
-  writer
-    .write(`${name}()`)
-    .write(':')
-    .space()
-
-  const type = getter.getReturnTypeNode()
-
-  if (type) {
-    writer.write(type.getText())
-
-  } else {
-    writer.write('any')
-  }
-
-  writer
-    .space()
-    .write(getter.getBodyOrThrow().getText())
-    .write(',')
-    .newLine()
-}
-
 function writeComputedProperty(
   writer: ts.CodeBlockWriter,
   name: string,
   getter: ts.GetAccessorDeclaration,
   setter: ts.SetAccessorDeclaration
 ) {
+  writer
+    .write(`${name}:`)
+    .space()
+    .write('{')
+    .newLine()
+    .withIndentationLevel(1, () => {
+      const setParameter = setter.getParameters()[0]
 
+      if (!setParameter) {
+        throw new Error('Computed setter doesn\'t seem to have a parameter.')
+      }
+
+      // TODO
+    })
+    .write('}')
+    .write(',')
+    .newLine()
+
+//   const setterDeclaration = f.createMethodDeclaration(
+//     undefined,
+//     undefined,
+//     undefined,
+//     f.createIdentifier('set'),
+//     undefined,
+//     undefined,
+//     [setParameter.compilerNode],
+//     undefined,
+//     transformBlock(setter.getBodyOrThrow() as Block, true),
+//   )
+
+//   let getterReturnType: ts.TypeNode | undefined = undefined
+
+//   // If there was a computed setter, Vue requires that the getter have
+//   // an annotated return type of the same type argument as that setter's
+//   // parameter. This is where we try to ensure that.
+//   if (setParameter.getTypeNode()) {
+//     getterReturnType = setParameter.getTypeNodeOrThrow().compilerNode
+
+//   } else {
+//     getterReturnType = f.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)
+//     console.log(`Computed getter for 「${name}」 will require a manual return type.`)
+//   }
+
+//   const getterDeclaration = f.createMethodDeclaration(
+//     undefined,
+//     undefined,
+//     undefined,
+//     f.createIdentifier('get'),
+//     undefined,
+//     undefined,
+//     [],
+//     getterReturnType,
+//     transformBlock(getter.getBodyOrThrow() as Block),
+//   )
+      
+//   return f.createPropertyAssignment(
+//     f.createIdentifier(name),
+//     f.createObjectLiteralExpression(
+//       [
+//         getterDeclaration,
+//         setterDeclaration,
+//       ], 
+//       true,
+//     ),
+//   )
+}
+
+function writeComputedGetter(
+  writer: ts.CodeBlockWriter,
+  name: string,
+  getter: ts.GetAccessorDeclaration,
+) {
+  // TODO
 }
 
 export function classToObject(source: ts.SourceFile) {

@@ -492,7 +492,7 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test.skip('converts computed properties correctly', t => {
+test('converts computed properties correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
