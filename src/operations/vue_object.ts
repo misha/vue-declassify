@@ -4,194 +4,6 @@ import * as imports from './imports'
 
 type PostprocessCallback = (source: ts.SourceFile) => void
 
-// function toTS<T extends ts.Node>(tsmorphNode: Node<T>): T {
-//   return tsmorphNode.compilerNode
-// } 
-
-// // Unclear how to directly plop an entire, pre-rendered comment in front.
-// // Forced to re-process the comment line-by-line to work with MultiLineCommentTriva.
-// function createDocumentation<T extends ts.Node>(target: T, docs: JSDoc[]) {
-//   if (docs.length > 0) {
-//     const comment = docs[0].compilerNode.comment
-
-//     if (comment) {
-//       return ts.addSyntheticLeadingComment(
-//         target, 
-//         SyntaxKind.MultiLineCommentTrivia, 
-//         '*\n' + // Starts with '/*'
-//           comment
-//             .split('\n')
-//             .map(line => ` * ${line}`)
-//             .join('\n')
-//         + '\n ', // Ends with '*/' 
-//         true,
-//       )
-//     }
-//   }
-
-//   return target
-// }
-
-// // Just passing the block compiler node makes it leave out all the values.
-// // No idea what I'm doing wrong, but... hey, it works if you re-render everything
-// // using getText()!
-// function transformBlock(block: Block, multiline?: boolean): ts.Block {
-//   return f.createBlock(
-//     [
-//       ...block
-//         .getStatementsWithComments()
-//         .map(statement => f.createExpressionStatement(
-//           f.createIdentifier(statement.getText()),
-//         )),
-//     ],
-//     true,
-//   )
-// }
-
-// function classPropTypeToObjectPropType(
-//   source: SourceFile,
-//   prop: {
-//     declaration: PropertyDeclaration
-//   }
-// ): ts.PropertyAssignment {
-//   let initializer: ts.Expression
-//   const type = prop.declaration.getType()
-
-//   if (type.isString()) {
-//     initializer = f.createIdentifier('String')
-
-//   } else if (type.isNumber()) {
-//     initializer = f.createIdentifier('Number')
-  
-//   } else if (type.isBoolean()) {
-//     initializer = f.createIdentifier('Boolean')
-
-//   } else {
-//     imports.ensure(source, 'vue', {
-//       named: ['PropType'],
-//     })
-
-//     const type = prop.declaration.getType()
-//     const actualType = prop.declaration.getTypeNodeOrThrow().getText()
-
-//     // Vue.js props can only be primitive types, unless you use PropType.
-//     // However, even when using PropType, the base annotated type must be
-//     // the same type as the annotated one, or you get type errors anyway.
-//     let baseType: 'Object' | 'Function' | 'Array'
-
-//     // HACK: Adjust Object/Function/Array based on what the type seems to be.
-//     // This heuristic can be improved drastically, and is part of what makes
-//     // a project like vue-declassify difficult. 
-    
-//     if (type.getCallSignatures().length > 0) {
-
-//       // This one is actually pretty safe. TS will tell us if what's inside has
-//       // a call signature, making it a function.
-//       baseType = 'Function'
-
-//     } else if (actualType.startsWith('Array<') || actualType.endsWith('[]')) {
-
-//       // This is some nonsense calculation but, it's quite effective? Arrays
-//       // are easy to spot syntactically. This doesn't work for user-defined
-//       // array types though. Fortunately, those are exceedingly rare.
-//       baseType = 'Array'
-
-//     } else {
-//       baseType = 'Object'
-//     }
-
-//     // HACK: Create a more concise `as` expression manually.
-//     initializer = f.createIdentifier(`${baseType} as PropType<${actualType}>`)
-//   }
-
-//   return f.createPropertyAssignment(
-//     f.createIdentifier('type'),
-//     initializer,
-//   )
-// }
-
-// function classPropOptionsToObjectPropOptions(
-//   source: SourceFile,
-//   prop: {
-//     default?: PropertyAssignment
-//     required?: PropertyAssignment
-//   }
-// ): ts.PropertyAssignment[] {
-  
-//   // Only permit exactly one of `default` and `required`,
-//   // since a default value implies required is false in Vue.
-//   // There actually doesn't seem to be a use-case to set both!
-//   if (prop.default) {
-    
-//     // Note: I really want to just pass the compiler node, but
-//     // for some reason `default` is special and does not render.
-//     // Probably has to do with `default` being a TS keyword.
-//     return [
-//       f.createPropertyAssignment(
-//         f.createIdentifier('default'),
-//         f.createIdentifier(prop.default.getInitializerOrThrow().getText()),
-//       )
-//     ]
-
-//   } else if (prop.required) {
-//     return [prop.required.compilerNode]
-
-//   } else {
-
-//     // Lastly, if neither property is directly supplied, mark `required` false.
-//     // This is consistent with the vue-property-decorator defaults.
-//     return [
-//       f.createPropertyAssignment(
-//         f.createIdentifier('required'),
-//         f.createFalse(),
-//       )
-//     ]
-//   }
-// }
-
-// function classPropToObjectProp(
-//   source: SourceFile,
-//   prop: {
-//     declaration: PropertyDeclaration
-//     default?: PropertyAssignment
-//     required?: PropertyAssignment
-//   }
-// ): ts.PropertyAssignment {
-//   return createDocumentation(
-//     f.createPropertyAssignment(
-//       f.createIdentifier(prop.declaration.getName()),
-//       f.createObjectLiteralExpression(
-//         [
-//           classPropTypeToObjectPropType(source, prop),
-//           ...classPropOptionsToObjectPropOptions(source, prop),
-//         ],
-//         true,
-//       ),
-//     ),
-//     prop.declaration.getJsDocs(),
-//   )
-// }
-
-// function classPropsToObjectProps(
-//   source: SourceFile,
-//   vue: {
-//     props: {
-//       declaration: PropertyDeclaration
-//       default?: PropertyAssignment
-//       required?: PropertyAssignment
-//     }[]
-//   }
-// ): ts.PropertyAssignment {
-//   return f.createPropertyAssignment(
-//     f.createIdentifier('props'),
-//     f.createObjectLiteralExpression(
-//       vue.props.map(prop => classPropToObjectProp(source, prop)),
-//       true,
-//     ),
-//   )
-// }
-
-
 // function classDataToObjectData(
 //   source: SourceFile,
 //   vue: {
@@ -408,12 +220,22 @@ type PostprocessCallback = (source: ts.SourceFile) => void
 //   )
 // }
 
-function writeComponentDocs(
+function writeDocs(
   writer: ts.CodeBlockWriter,
-  declaration: ts.ClassDeclaration,
+  docs: ts.JSDoc[],
 ) {
-  for (let jsDoc of declaration.getJsDocs()) {
-    writer.writeLine(jsDoc.getText())
+  for (let doc of docs) {
+    writer.writeLine('/**')
+
+    for (let line of doc.getInnerText().split('\n')) {
+      writer
+        .write(' *')
+        .conditionalWrite(!!line.trim(), ' ')
+        .write(line)
+        .newLine()
+    }
+
+    writer.writeLine(' */')
   }
 }
 
@@ -453,13 +275,14 @@ function writeProps(
 
   if (props.length > 0) {
     writer
-      .write('props: {')
+      .writeLine('props: {')
       .withIndentationLevel(1, () => {
         for (let prop of props) {
           callbacks.push(...writeProp(writer, prop))
         }
       })
-      .write('},')
+      .write('}')
+      .write(',')
   }
 
   return callbacks
@@ -474,6 +297,7 @@ function writeProp(
   }
 ): PostprocessCallback[] {
   const callbacks: PostprocessCallback[] = []
+  writeDocs(writer, prop.declaration.getJsDocs())
 
   writer
     .write(`${prop.declaration.getName()}: {`)
@@ -579,6 +403,50 @@ function writePropOptions(
     .newLine()
 }
 
+function writeData(
+  writer: ts.CodeBlockWriter,
+  data: ts.PropertyDeclaration[]
+) {
+  if (data.length > 0) {
+    writer.writeLine('data() {')
+      .withIndentationLevel(1, () => {
+        writer.writeLine('return {')
+
+        for (const property of data) {
+          writeDataProperty(writer, property)
+        }
+
+        writer.writeLine('};')
+      })
+      .write('}')
+      .write(',')
+      .newLine()
+  }
+}
+
+function writeDataProperty(
+  writer: ts.CodeBlockWriter,
+  property: ts.PropertyDeclaration,
+) {
+  writeDocs(writer, property.getJsDocs())
+  writer
+    .write(property.getName())
+    .write(': ')
+    .write(property.getInitializerOrThrow().getText())
+
+  const type = property.getTypeNode()
+
+  if (type) {
+    writer
+      .write(' as ')
+      .write(type.getText())
+  }
+          
+  writer
+    .write(',')
+    .newLine()
+}
+
 export function classToObject(source: ts.SourceFile) {
   const vue = vue_class.extract(source)
 
@@ -597,49 +465,13 @@ export function classToObject(source: ts.SourceFile) {
     watch,
   } = vue
 
-  // // Add any properties we inherited from the @Component decorator.
-  // // Note: this doesn't merge any Vue data that occurs in the class declaration.
-  // for (let property of vue.decorator.properties) {
-  //   properties.push(property.compilerNode)
-  // }
-
-  // if (vue.props.length > 0) {
-  //   properties.push(classPropsToObjectProps(source, vue))
-  // }
-
-  // if (vue.data.length > 0) {
-  //   properties.push(classDataToObjectData(source, vue))
-  // }
-
-  // if (Object.keys(vue.computed).length > 0) {
-  //   properties.push(classComputedToObjectComputed(source, vue))
-  // }
-
-  // if (vue.methods.length > 0) {
-  //   properties.push(classMethodsToObjectMethods(source, vue))
-  // }
-
-  // // Wrap the properties up in a call to Vue.extend().
-  // const component = f.createCallExpression(
-  //   f.createIdentifier('Vue.extend'),
-  //   undefined,
-  //   [f.createObjectLiteralExpression(properties, true)]
-  // )
-
-  // Save the docs.
-  // let documentation: string
-
-  // if (vue.declaration.getJsDocs().length > 0) {
-  //   documentation = vue.declaration.getJsDocs()[0].getFullText()
-  // }
-
   const callbacks: PostprocessCallback[] = [
     source => source.formatText()
   ]
 
   source.addExportAssignment({
     leadingTrivia: writer => {
-      writeComponentDocs(writer, declaration)
+      writeDocs(writer, declaration.getJsDocs())
     },
     expression: writer => {
       writer
@@ -648,6 +480,7 @@ export function classToObject(source: ts.SourceFile) {
           writeName(writer, declaration)
           writeConfig(writer, decorator)
           callbacks.push(...writeProps(writer, props))
+          writeData(writer, data)
         })
         .write('})')
     },

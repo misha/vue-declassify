@@ -67,7 +67,6 @@ div {
 
 <script lang="ts">
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'SFCComponent'
 });
@@ -322,7 +321,7 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test.skip('converts props with comments correctly', t => {
+test('converts props with comments correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
@@ -339,7 +338,6 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   props: {
@@ -350,35 +348,36 @@ export default Vue.extend({
      */
     flag: {
       type: Boolean,
-      required: false
-    }
-  }
+      required: false,
+    },
+  },
 });
   `
 
   validate(t, source, truth)
 })
 
-test.skip('converts simple data correctly', t => {
+test('converts simple data correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
   x = 5
   y: string = 'test'
+  z = 6
 }
   `
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   data() {
     return {
       x: 5,
-      y: 'test' as string
+      y: 'test' as string,
+      z: 6,
     };
-  }
+  },
 });
   `
 
@@ -395,7 +394,6 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   data() {
@@ -430,7 +428,6 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   data() {
@@ -515,7 +512,6 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   data() {
@@ -555,7 +551,6 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   methods: {
