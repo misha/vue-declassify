@@ -4,35 +4,6 @@ import * as imports from './imports'
 
 type PostprocessCallback = (source: ts.SourceFile) => void
 
-// function classMethodsToObjectMethods(
-//   source: SourceFile,
-//   vue: {
-//     methods: MethodDeclaration[]
-//   }
-// ): ts.PropertyAssignment {
-//   return f.createPropertyAssignment(
-//     f.createIdentifier('methods'),
-//     f.createObjectLiteralExpression(
-//       vue.methods.map(method => 
-//         // I really, really want to just pass the compiler node... but no dice.
-//         // The values simply do not render.
-//         f.createMethodDeclaration(
-//           method.getDecorators()?.map(toTS),
-//           method.getModifiers()?.map(modifier => modifier.compilerNode as ts.Modifier),
-//           undefined,
-//           f.createIdentifier(method.getName()),
-//           undefined,
-//           method.getTypeParameters()?.map(toTS),
-//           method.getParameters()?.map(toTS),
-//           method.getReturnTypeNode()?.compilerNode,
-//           transformBlock(method.getBodyOrThrow() as Block, true),
-//         ),
-//       ),
-//       true,
-//     ),
-//   )
-// }
-
 function writeDocs(
   writer: ts.CodeBlockWriter,
   docs: ts.JSDoc[],
@@ -372,6 +343,39 @@ function writeComputedGetter(
     .newLine()
 }
 
+function writeMethods(
+  writer: ts.CodeBlockWriter,
+  methods: ts.MethodDeclaration[]
+) {
+  if (methods.length > 0) {
+    writer
+      .write('methods')
+      .write(':')
+      .space()
+      .write('{')
+      .newLine()
+      .withIndentationLevel(1, () => {
+        for (const method of methods) {
+          writeMethod(writer, method)
+        }
+      })
+      .write('}')
+      .write(',')
+      .newLine()
+  }
+}
+
+function writeMethod(
+  writer: ts.CodeBlockWriter,
+  method: ts.MethodDeclaration
+) {
+  writeDocs(writer, method.getJsDocs())
+  writer
+    .newLineIfLastNot()
+    .write(method.getText())
+    .write(',')
+}
+
 export function classToObject(source: ts.SourceFile) {
   const vue = vue_class.extract(source)
 
@@ -407,6 +411,7 @@ export function classToObject(source: ts.SourceFile) {
           callbacks.push(...writeProps(writer, props))
           writeData(writer, data)
           writeComputed(writer, computed)
+          writeMethods(writer, methods)
         })
         .write('})')
     },

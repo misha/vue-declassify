@@ -38,7 +38,7 @@ ${result}
   `)
 }
 
-test.skip('can also handle Vue SFC code', t => {
+test('can also handle Vue SFC code', t => {
   const source = `
 <template>
   <div />
@@ -68,7 +68,7 @@ div {
 <script lang="ts">
 import Vue from 'vue';
 export default Vue.extend({
-  name: 'SFCComponent'
+  name: 'SFCComponent',
 });
 </script>
 
@@ -82,7 +82,7 @@ div {
   validate(t, source, truth, 'vue')
 })
 
-test.skip('removes class-based component library imports', t => {
+test('removes class-based component library imports', t => {
   const source = `
 import { Component, Vue } from 'vue-class-component';
 import { Component, Prop, Vue } from 'vue-property-decorator';
@@ -95,7 +95,7 @@ import Vue from 'vue';
   validate(t, source, truth)
 })
 
-test.skip('only adds the Vue import if necessary', t => {
+test('only adds the Vue import if necessary', t => {
   const source = `
 import Vue from 'vue'
   `
@@ -534,7 +534,7 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test.skip('converts methods correctly', t => {
+test('converts methods correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
@@ -554,12 +554,12 @@ export default Vue.extend({
   name: 'Component',
   methods: {
     onClick() {
-      console.log('Hello, world!');
+      console.log('Hello, world!')
     },
     async compute(): boolean {
-      return await sendCompute();
-    }
-  }
+      return await sendCompute()
+    },
+  },
 });
   `
   
