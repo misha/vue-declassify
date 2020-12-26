@@ -55,7 +55,7 @@ Note that if you do not supply a return type for any one computed getter, your e
 
 I originally started writing Vue using libraries like `vue-class-component` and `vue-property-decorator` for a few reasons. I thought the class-based writing style was easier to read, and other engineers would find it more familiar. 
 
-Unfortunately, when class-style components have a few drawbacks.
+Unfortunately, class-style components have several drawbacks.
 
 1. Vetur's experimental template type checking feature only works if the the types are available to Vue. Class-based components do not make those types available, so you would have to define property types twice. This is a core feature of the framework and I don't want to have to dance around it *every time I write a component*.
 
