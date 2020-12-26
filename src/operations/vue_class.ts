@@ -153,11 +153,12 @@ function unpackClass(declaration: ClassDeclaration) {
     setter?: SetAccessorDeclaration
   }> = {}
 
-  const watch: Record<string, {
-    method: MethodDeclaration
+  const watches: {
+    path: string
+    declaration: MethodDeclaration
     immediate?: PropertyAssignment
     deep?: PropertyAssignment
-  }> = {}
+  }[] = []
 
   for (const property of declaration.getInstanceProperties()) {
     if (property instanceof PropertyDeclaration) {
@@ -217,13 +218,11 @@ function unpackClass(declaration: ClassDeclaration) {
     const decorator = method.getDecorator('Watch')
     
     if (decorator) {
-      const { path, ...configuration } = unpackWatchDecorator(decorator)
-
-      watch[path] = {
-        method,
-        ...configuration,
-      }
-
+      watches.push({
+        declaration: method,
+        ...unpackWatchDecorator(decorator),
+      })
+      
     } else {
       methods.push(method)
     }
@@ -235,7 +234,7 @@ function unpackClass(declaration: ClassDeclaration) {
     data,
     computed,
     methods,
-    watch,
+    watches,
   }
 }
 

@@ -69,9 +69,7 @@ function writeProps(
           callbacks.push(...writeProp(writer, prop))
         }
       })
-      .write('}')
-      .write(',')
-      .newLine()
+      .writeLine('},')
   }
 
   return callbacks
@@ -96,9 +94,7 @@ function writeProp(
       callbacks.push(...writePropType(writer, prop.declaration))
       writePropOptions(writer, prop)
     })
-    .write('}')
-    .write(',')
-    .newLine()
+    .writeLine('},')
 
   return callbacks
 }
@@ -213,9 +209,7 @@ function writeData(
 
         writer.writeLine('};')
       })
-      .write('}')
-      .write(',')
-      .newLine()
+      .writeLine('},')
   }
 }
 
@@ -270,10 +264,7 @@ function writeComputed(
       }
     }
       
-    writer
-      .write('}')
-      .write(',')
-      .newLine()
+    writer.writeLine('},')
   }
 }
 
@@ -322,9 +313,7 @@ function writeComputedProperty(
         .write(',')
         .newLine()
     })
-    .write('}')
-    .write(',')
-    .newLine()
+    .writeLine('},')
   }
 
 function writeComputedGetter(
@@ -333,8 +322,7 @@ function writeComputedGetter(
 ) {
   writeDocs(writer, getter.getJsDocs())
   writer
-    .write(`${getter.getName()}()`)
-    .write(':')
+    .write(`${getter.getName()}():`)
     .space()
     .write(getter.getReturnTypeNode()?.getText() || 'any')
     .newLine()
@@ -349,8 +337,7 @@ function writeMethods(
 ) {
   if (methods.length > 0) {
     writer
-      .write('methods')
-      .write(':')
+      .write('methods:')
       .space()
       .write('{')
       .newLine()
@@ -359,9 +346,7 @@ function writeMethods(
           writeMethod(writer, method)
         }
       })
-      .write('}')
-      .write(',')
-      .newLine()
+      .writeLine('},')
   }
 }
 
@@ -374,6 +359,89 @@ function writeMethod(
     .newLineIfLastNot()
     .write(method.getText())
     .write(',')
+}
+
+function writeWatches(
+  writer: ts.CodeBlockWriter,
+  watches: {
+    path: string,
+    declaration: ts.MethodDeclaration
+    immediate?: ts.PropertyAssignment
+    deep?: ts.PropertyAssignment
+  }[]
+) {
+  if (watches.length > 0) {
+    writer
+      .write('watch:')
+      .space()
+      .write('{')
+      .newLine()
+      .withIndentationLevel(1, () => {
+        for (const watch of watches) {
+          writeWatch(writer, watch)
+        }
+      })
+      .writeLine('},')
+  }
+}
+
+function writeWatch(
+  writer: ts.CodeBlockWriter,
+  watch: {
+    path: string,
+    declaration: ts.MethodDeclaration,
+    immediate?: ts.PropertyAssignment,
+    deep?: ts.PropertyAssignment,
+  }
+) {
+  writeDocs(writer, watch.declaration.getJsDocs())
+  writer
+    .write(watch.declaration.getName())
+    .write(':')
+    .space()
+    .write('{')
+    .newLine()
+    .withIndentationLevel(1, () => {
+      writer
+        .write('path:')
+        .space()
+        .quote()
+        .write(watch.path)
+        .quote()
+        .write(',')
+        .newLine()
+
+      if (watch.immediate) {
+        writer.writeLine(watch.immediate.getText())
+      }
+
+      if (watch.deep) {
+        writer.writeLine(watch.deep.getText())
+      }
+
+      writer
+        .write(watch.declaration
+          .getModifiers()
+          .map(modifier => modifier.getText())
+          .join(' ')
+        )
+        .conditionalWrite(!writer.isLastSpace(), ' ')
+        .write('handler')
+        .write('(')
+        .write(watch.declaration
+          .getParameters()
+          .map(parameter => parameter.getText())
+          .join(', ')
+        )
+        .write(')')
+        .space()
+        .withIndentationLevel(1, () => {
+          writer.write(watch.declaration.getBodyOrThrow().getText())
+        })
+        .write(',')
+        .newLine()
+    })
+    .writeLine('},')
 }
 
 export function classToObject(source: ts.SourceFile) {
@@ -391,7 +459,7 @@ export function classToObject(source: ts.SourceFile) {
     computed,
     methods,
     syncProps,
-    watch,
+    watches,
   } = vue
 
   const callbacks: PostprocessCallback[] = [
@@ -412,6 +480,7 @@ export function classToObject(source: ts.SourceFile) {
           writeData(writer, data)
           writeComputed(writer, computed)
           writeMethods(writer, methods)
+          writeWatches(writer, watches)
         })
         .write('})')
     },
