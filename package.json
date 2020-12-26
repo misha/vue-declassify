@@ -30,7 +30,7 @@
     "dev": "ts-node ./src/cli.ts",
     "clean": "rimraf ./dist/ ./exec/",
     "build": "npm run clean && tsc",
-    "test": "ava --verbose",
+    "test": "nyc ava --verbose",
     "test:watch": "ava --watch",
     "bundle": "npm run build && pkg . --out-dir ./exec/"
   },
@@ -41,6 +41,7 @@
   "devDependencies": {
     "@types/node": "^14.14.12",
     "ava": "^3.14.0",
+    "nyc": "^15.1.0",
     "pkg": "^4.4.9",
     "rimraf": "^3.0.2",
     "ts-node": "^9.1.1",

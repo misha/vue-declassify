@@ -1,5 +1,6 @@
 # Ignore generated directories
 dist/
+.nyc_output/
 
 # Logs
 logs
