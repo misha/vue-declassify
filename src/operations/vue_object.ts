@@ -412,11 +412,17 @@ function writeWatch(
         .newLine()
 
       if (watch.immediate) {
-        writer.writeLine(watch.immediate.getText())
+        writer
+          .write(watch.immediate.getText())
+          .write(',')
+          .newLine()
       }
 
       if (watch.deep) {
-        writer.writeLine(watch.deep.getText())
+        writer
+          .write(watch.deep.getText())
+          .write(',')
+          .newLine()
       }
 
       writer

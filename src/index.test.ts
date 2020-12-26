@@ -574,9 +574,6 @@ export default class Component extends Vue {
   @Prop({ required: true })
   loading!: boolean
 
-  /**
-   * Show an animation when loading.
-   */
   @Watch('loading')
   executeAnimationOnLoading(current: boolean, previous: boolean) {
     if (current && !previous) {
@@ -597,14 +594,105 @@ export default Vue.extend({
     },
   },
   watch: {
-    /**
-     * Show an animation when loading.
-     */
     executeAnimationOnLoading: {
       path: 'loading',
       handler(current: boolean, previous: boolean) {
         if (current && !previous) {
           console.log('Animating now!')
+        }
+      },
+    },
+  },
+});
+  `
+  
+  validate(t, source, truth)
+})
+
+test('converts watch comments correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+  
+  @Prop({ required: true })
+  loading!: boolean
+
+  /**
+   * Show an animation when loading.
+   */
+  @Watch('loading')
+  logOnLoading() {
+    if (this.loading) {
+      console.log('now loading')
+    }
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+export default Vue.extend({
+  name: 'Component',
+  props: {
+    loading: {
+      type: Boolean,
+      required: true,
+    },
+  },
+  watch: {
+    /**
+     * Show an animation when loading.
+     */
+    logOnLoading: {
+      path: 'loading',
+      handler() {
+        if (this.loading) {
+          console.log('now loading')
+        }
+      },
+    },
+  },
+});
+  `
+  
+  validate(t, source, truth)
+})
+
+test('converts watch options correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+  
+  @Prop({ required: true })
+  loading!: boolean
+
+  @Watch('loading', { immediate: true, deep: false })
+  logOnLoading() {
+    if (this.loading) {
+      console.log('now loading')
+    }
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+export default Vue.extend({
+  name: 'Component',
+  props: {
+    loading: {
+      type: Boolean,
+      required: true,
+    },
+  },
+  watch: {
+    logOnLoading: {
+      path: 'loading',
+      immediate: true,
+      deep: false,
+      handler() {
+        if (this.loading) {
+          console.log('now loading')
         }
       },
     },
