@@ -515,19 +515,19 @@ export default Vue.extend({
   name: 'Component',
   data() {
     return {
-      count: 0
+      count: 0,
     };
   },
   computed: {
     offsetCount: {
       get(): number {
-        return this.count + 1;
+        return this.count + 1
       },
       set(value: number) {
-        this.count = value - 1;
-      }
-    }
-  }
+        this.count = value - 1
+      },
+    },
+  },
 });
   `
   

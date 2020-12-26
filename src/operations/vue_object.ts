@@ -37,10 +37,10 @@ function writeDocs(
   writer: ts.CodeBlockWriter,
   docs: ts.JSDoc[],
 ) {
-  for (let doc of docs) {
+  for (const doc of docs) {
     writer.writeLine('/**')
 
-    for (let line of doc.getInnerText().split('\n')) {
+    for (const line of doc.getInnerText().split('\n')) {
       writer
         .write(' *')
         .conditionalWrite(!!line.trim(), ' ')
@@ -72,7 +72,7 @@ function writeConfig(
     properties: ts.ObjectLiteralElementLike[]
   }
 ) {
-  for (let property of decorator.properties) {
+  for (const property of decorator.properties) {
     writer.write(property.getText())
   }
 }
@@ -291,7 +291,7 @@ function writeComputed(
     for (const [name, { getter, setter }] of Object.entries(computed)) {
       if (getter) {
         if (!setter) {
-          writeComputedGetter(writer, name, getter)
+          writeComputedGetter(writer, getter)
 
         } else {
           writeComputedProperty(writer, name, getter, setter)
@@ -313,7 +313,8 @@ function writeComputedProperty(
   setter: ts.SetAccessorDeclaration
 ) {
   writer
-    .write(`${name}:`)
+    .write(name)
+    .write(':')
     .space()
     .write('{')
     .newLine()
@@ -324,67 +325,51 @@ function writeComputedProperty(
         throw new Error('Computed setter doesn\'t seem to have a parameter.')
       }
 
-      // TODO
+      writeDocs(writer, getter.getJsDocs())
+      writer
+        .write(`get()`)
+        .write(':')
+        .space()
+        // Computed property getters need to match the setter's return type,
+        // But there's actually a variety of places this can be obtained...
+        // try them all before giving up with `any`.
+        .write(getter.getReturnTypeNode()?.getText() 
+            || setParameter.getTypeNode()?.getText() 
+            || 'any')
+        .newLine()
+        .write(getter.getBodyOrThrow().getText())
+        .write(',')
+        .newLine()
+
+      writeDocs(writer, setter.getJsDocs())
+      writer
+        .write('set(')
+        .write(setParameter.getText())
+        .write(')')
+        .newLine()
+        .write(setter.getBodyOrThrow().getText())
+        .write(',')
+        .newLine()
     })
     .write('}')
     .write(',')
     .newLine()
-
-//   const setterDeclaration = f.createMethodDeclaration(
-//     undefined,
-//     undefined,
-//     undefined,
-//     f.createIdentifier('set'),
-//     undefined,
-//     undefined,
-//     [setParameter.compilerNode],
-//     undefined,
-//     transformBlock(setter.getBodyOrThrow() as Block, true),
-//   )
-
-//   let getterReturnType: ts.TypeNode | undefined = undefined
-
-//   // If there was a computed setter, Vue requires that the getter have
-//   // an annotated return type of the same type argument as that setter's
-//   // parameter. This is where we try to ensure that.
-//   if (setParameter.getTypeNode()) {
-//     getterReturnType = setParameter.getTypeNodeOrThrow().compilerNode
-
-//   } else {
-//     getterReturnType = f.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)
-//     console.log(`Computed getter for 「${name}」 will require a manual return type.`)
-//   }
-
-//   const getterDeclaration = f.createMethodDeclaration(
-//     undefined,
-//     undefined,
-//     undefined,
-//     f.createIdentifier('get'),
-//     undefined,
-//     undefined,
-//     [],
-//     getterReturnType,
-//     transformBlock(getter.getBodyOrThrow() as Block),
-//   )
-      
-//   return f.createPropertyAssignment(
-//     f.createIdentifier(name),
-//     f.createObjectLiteralExpression(
-//       [
-//         getterDeclaration,
-//         setterDeclaration,
-//       ], 
-//       true,
-//     ),
-//   )
-}
+  }
 
 function writeComputedGetter(
   writer: ts.CodeBlockWriter,
-  name: string,
-  getter: ts.GetAccessorDeclaration,
+  getter: ts.GetAccessorDeclaration
 ) {
-  // TODO
+  writeDocs(writer, getter.getJsDocs())
+  writer
+    .write(`${getter.getName()}()`)
+    .write(':')
+    .space()
+    .write(getter.getReturnTypeNode()?.getText() || 'any')
+    .newLine()
+    .write(getter.getBodyOrThrow().getText())
+    .write(',')
+    .newLine()
 }
 
 export function classToObject(source: ts.SourceFile) {
@@ -429,7 +414,7 @@ export function classToObject(source: ts.SourceFile) {
   })
 
   // Perform any processing that had to happen after we finished writing.
-  for (let callback of callbacks.reverse()) {
+  for (const callback of callbacks.reverse()) {
     callback(source)
   }
 
