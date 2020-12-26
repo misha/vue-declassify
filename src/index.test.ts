@@ -67,9 +67,8 @@ div {
 
 <script lang="ts">
 import Vue from 'vue';
-
 export default Vue.extend({
-  name: 'SFCComponent'
+  name: 'SFCComponent',
 });
 </script>
 
@@ -115,9 +114,8 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
-  name: 'Component'
+  name: 'Component',
 });
   `
 
@@ -139,7 +137,6 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   components: {
@@ -169,23 +166,22 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   props: {
     message: {
       type: String,
-      required: false
+      required: false,
     },
     count: {
       type: Number,
-      required: false
+      required: false,
     },
     flag: {
       type: Boolean,
-      required: false
-    }
-  }
+      required: false,
+    },
+  },
 });
   `
 
@@ -216,31 +212,30 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   props: {
     a: {
       type: Boolean,
-      required: false
+      required: false,
     },
     b: {
       type: Boolean,
-      required: false
+      required: false,
     },
     c: {
       type: Boolean,
-      required: true
+      required: true,
     },
     d: {
       type: Boolean,
-      default: 'Hello, world!'
+      default: 'Hello, world!',
     },
     e: {
       type: Boolean,
-      default: 'Hello, world!'
-    }
-  }
+      default: 'Hello, world!',
+    },
+  },
 });
   `
 
@@ -272,21 +267,20 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue, { PropType } from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   props: {
     model: {
       type: Object as PropType<Model>,
-      required: true
+      required: true,
     },
     items: {
       type: Array as PropType<Item[]>,
-      required: true
+      required: true,
     },
     callback: {
       type: Function as PropType<() => Promise<void>>,
-      default: () => noop
+      default: () => noop,
     },
     data: {
       type: Object as PropType<{
@@ -294,9 +288,9 @@ export default Vue.extend({
         flag: boolean
         value: number
       }>,
-      required: true
-    }
-  }
+      required: true,
+    },
+  },
 });
   `
 
@@ -316,12 +310,11 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 /**
  * This is my component!
  */
 export default Vue.extend({
-  name: 'Component'
+  name: 'Component',
 });
   `
 
@@ -345,7 +338,6 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   props: {
@@ -356,9 +348,9 @@ export default Vue.extend({
      */
     flag: {
       type: Boolean,
-      required: false
-    }
-  }
+      required: false,
+    },
+  },
 });
   `
 
@@ -371,20 +363,21 @@ test('converts simple data correctly', t => {
 export default class Component extends Vue {
   x = 5
   y: string = 'test'
+  z = 6
 }
   `
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   data() {
     return {
       x: 5,
-      y: 'test' as string
+      y: 'test' as string,
+      z: 6,
     };
-  }
+  },
 });
   `
 
@@ -401,14 +394,13 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   data() {
     return {
-      x: null as string | null
+      x: null as string | null,
     };
-  }
+  },
 });
   `
 
@@ -436,7 +428,6 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   data() {
@@ -450,9 +441,9 @@ export default Vue.extend({
        *
        * Hope you read it all...
        */
-      y: 'test'
+      y: 'test',
     };
-  }
+  },
 });
   `
 
@@ -479,23 +470,22 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue, { PropType } from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   props: {
     model: {
       type: Object as PropType<Model>,
-      required: true
-    }
+      required: true,
+    },
   },
   computed: {
     modelFlag(): any {
-      return this.model.flag;
+      return this.model.flag
     },
     annotatedModelFlag(): boolean {
-      return this.model.flag;
-    }
-  }
+      return this.model.flag
+    },
+  },
 });
   `
   
@@ -521,24 +511,23 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   data() {
     return {
-      count: 0
+      count: 0,
     };
   },
   computed: {
     offsetCount: {
       get(): number {
-        return this.count + 1;
+        return this.count + 1
       },
       set(value: number) {
-        this.count = value - 1;
-      }
-    }
-  }
+        this.count = value - 1
+      },
+    },
+  },
 });
   `
   
@@ -561,17 +550,16 @@ export default class Component extends Vue {
 
   const truth = `
 import Vue from 'vue';
-
 export default Vue.extend({
   name: 'Component',
   methods: {
     onClick() {
-      console.log('Hello, world!');
+      console.log('Hello, world!')
     },
     async compute(): boolean {
-      return await sendCompute();
-    }
-  }
+      return await sendCompute()
+    },
+  },
 });
   `
   

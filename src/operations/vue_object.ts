@@ -1,91 +1,127 @@
-import { Block, ClassDeclaration, Expression, GetAccessorDeclaration, JSDoc, MethodDeclaration, Node, ParameterDeclaration, printNode, PropertyAssignment, PropertyDeclaration, SetAccessorDeclaration, SourceFile, SyntaxKind, ts, TypeNode } from 'ts-morph'
-
+import * as ts from 'ts-morph'
 import * as vue_class from './vue_class'
 import * as imports from './imports'
 
-const f = ts.factory
+type PostprocessCallback = (source: ts.SourceFile) => void
 
-function toTS<T extends ts.Node>(tsmorphNode: Node<T>): T {
-  return tsmorphNode.compilerNode
-} 
+function writeDocs(
+  writer: ts.CodeBlockWriter,
+  docs: ts.JSDoc[],
+) {
+  for (const doc of docs) {
+    writer.writeLine('/**')
 
-// Unclear how to directly plop an entire, pre-rendered comment in front.
-// Forced to re-process the comment line-by-line to work with MultiLineCommentTriva.
-function createDocumentation<T extends ts.Node>(target: T, docs: JSDoc[]) {
-  if (docs.length > 0) {
-    const comment = docs[0].compilerNode.comment
-
-    if (comment) {
-      return ts.addSyntheticLeadingComment(
-        target, 
-        SyntaxKind.MultiLineCommentTrivia, 
-        '*\n' + // Starts with '/*'
-          comment
-            .split('\n')
-            .map(line => ` * ${line}`)
-            .join('\n')
-        + '\n ', // Ends with '*/' 
-        true,
-      )
+    for (const line of doc.getInnerText().split('\n')) {
+      writer
+        .write(' *')
+        .conditionalWrite(!!line.trim(), ' ')
+        .write(line)
+        .newLine()
     }
+
+    writer.writeLine(' */')
+  }
+}
+
+function writeName(
+  writer: ts.CodeBlockWriter,
+  declaration: ts.ClassDeclaration,
+) {
+  writer
+    .write('name:')
+    .space()
+    .quote()
+      .write(declaration.getNameOrThrow())
+    .quote()
+    .write(',')
+    .newLine()
+}
+
+function writeConfig(
+  writer: ts.CodeBlockWriter,
+  decorator: {
+    properties: ts.ObjectLiteralElementLike[]
+  }
+) {
+  for (const property of decorator.properties) {
+    writer.write(property.getText())
+  }
+}
+
+function writeProps(
+  writer: ts.CodeBlockWriter, 
+  props: {
+    declaration: ts.PropertyDeclaration
+    required?: ts.PropertyAssignment
+    default?: ts.PropertyAssignment
+  }[]
+): PostprocessCallback[] {
+  const callbacks: PostprocessCallback[] = []
+
+  if (props.length > 0) {
+    writer
+      .write('props:')
+      .space()
+      .write('{')
+      .newLine()
+      .withIndentationLevel(1, () => {
+        for (let prop of props) {
+          callbacks.push(...writeProp(writer, prop))
+        }
+      })
+      .write('}')
+      .write(',')
+      .newLine()
   }
 
-  return target
+  return callbacks
 }
 
-// Just passing the block compiler node makes it leave out all the values.
-// No idea what I'm doing wrong, but... hey, it works if you re-render everything
-// using getText()!
-function transformBlock(block: Block, multiline?: boolean): ts.Block {
-  return f.createBlock(
-    [
-      ...block
-        .getStatementsWithComments()
-        .map(statement => f.createExpressionStatement(
-          f.createIdentifier(statement.getText()),
-        )),
-    ],
-    true,
-  )
-}
-
-function classNameToPropName(
-  source: SourceFile,
-  vue: {
-    declaration: ClassDeclaration,
-  }
-): ts.PropertyAssignment {
-  return f.createPropertyAssignment(
-    f.createIdentifier('name'),
-    f.createStringLiteral(vue.declaration.getNameOrThrow(), true),
-  )
-}
-
-function classPropTypeToObjectPropType(
-  source: SourceFile,
+function writeProp(
+  writer: ts.CodeBlockWriter,
   prop: {
-    declaration: PropertyDeclaration
+    declaration: ts.PropertyDeclaration
+    required?: ts.PropertyAssignment
+    default?: ts.PropertyAssignment
   }
-): ts.PropertyAssignment {
-  let initializer: ts.Expression
-  const type = prop.declaration.getType()
+): PostprocessCallback[] {
+  const callbacks: PostprocessCallback[] = []
+  writeDocs(writer, prop.declaration.getJsDocs())
+
+  writer
+    .write(`${prop.declaration.getName()}:`)
+    .space()
+    .write('{')
+    .withIndentationLevel(1, () => {
+      callbacks.push(...writePropType(writer, prop.declaration))
+      writePropOptions(writer, prop)
+    })
+    .write('}')
+    .write(',')
+    .newLine()
+
+  return callbacks
+}
+
+function writePropType(
+  writer: ts.CodeBlockWriter,
+  declaration: ts.PropertyDeclaration
+): PostprocessCallback[] {
+  const callbacks: PostprocessCallback[] = []
+  const type = declaration.getType()
+  writer.write('type: ')
 
   if (type.isString()) {
-    initializer = f.createIdentifier('String')
-
-  } else if (type.isNumber()) {
-    initializer = f.createIdentifier('Number')
+    writer.write('String')
   
+  } else if (type.isNumber()) {
+    writer.write('Number')
+
   } else if (type.isBoolean()) {
-    initializer = f.createIdentifier('Boolean')
-
+    writer.write('Boolean')
+  
   } else {
-    imports.ensure(source, 'vue', {
-      named: ['PropType'],
-    })
-
-    const type = prop.declaration.getType()
-    const actualType = prop.declaration.getTypeNodeOrThrow().getText()
+    const actualType = declaration.getTypeNodeOrThrow().getText()
 
     // Vue.js props can only be primitive types, unless you use PropType.
     // However, even when using PropType, the base annotated type must be
@@ -95,7 +131,7 @@ function classPropTypeToObjectPropType(
     // HACK: Adjust Object/Function/Array based on what the type seems to be.
     // This heuristic can be improved drastically, and is part of what makes
     // a project like vue-declassify difficult. 
-    
+  
     if (type.getCallSignatures().length > 0) {
 
       // This one is actually pretty safe. TS will tell us if what's inside has
@@ -113,373 +149,280 @@ function classPropTypeToObjectPropType(
       baseType = 'Object'
     }
 
-    // HACK: Create a more concise `as` expression manually.
-    initializer = f.createIdentifier(`${baseType} as PropType<${actualType}>`)
+    writer.write(`${baseType} as PropType<${actualType}>`)
+
+    // Add PropType to the imports afterwards, since we just used it.
+    callbacks.push(source => {
+      imports.ensure(source, 'vue', {
+        named: ['PropType'],
+      })
+    })
   }
 
-  return f.createPropertyAssignment(
-    f.createIdentifier('type'),
-    initializer,
-  )
+  writer
+    .write(',')
+    .newLine()
+
+  return callbacks
 }
 
-function classPropOptionsToObjectPropOptions(
-  source: SourceFile,
-  prop: {
-    default?: PropertyAssignment
-    required?: PropertyAssignment
+function writePropOptions(
+  writer: ts.CodeBlockWriter,
+  options: {
+    required?: ts.PropertyAssignment
+    default?: ts.PropertyAssignment
   }
-): ts.PropertyAssignment[] {
-  
+) {
+    
   // Only permit exactly one of `default` and `required`,
   // since a default value implies required is false in Vue.
   // There actually doesn't seem to be a use-case to set both!
-  if (prop.default) {
-    
-    // Note: I really want to just pass the compiler node, but
-    // for some reason `default` is special and does not render.
-    // Probably has to do with `default` being a TS keyword.
-    return [
-      f.createPropertyAssignment(
-        f.createIdentifier('default'),
-        f.createIdentifier(prop.default.getInitializerOrThrow().getText()),
-      )
-    ]
+  if (options.default) {
+    writer.write(options.default.getText())
 
-  } else if (prop.required) {
-    return [prop.required.compilerNode]
+  } else if (options.required) {
+    writer.write(options.required.getText())
 
   } else {
 
     // Lastly, if neither property is directly supplied, mark `required` false.
-    // This is consistent with the vue-property-decorator defaults.
-    return [
-      f.createPropertyAssignment(
-        f.createIdentifier('required'),
-        f.createFalse(),
-      )
-    ]
+    writer.write('required: false')
+  }
+
+  writer
+    .write(',')
+    .newLine()
+}
+
+function writeData(
+  writer: ts.CodeBlockWriter,
+  data: ts.PropertyDeclaration[]
+) {
+  if (data.length > 0) {
+    writer
+      .writeLine('data()')
+      .space()
+      .write('{')
+      .newLine()
+      .withIndentationLevel(1, () => {
+        writer.writeLine('return {')
+
+        for (const property of data) {
+          writeDataProperty(writer, property)
+        }
+
+        writer.writeLine('};')
+      })
+      .write('}')
+      .write(',')
+      .newLine()
   }
 }
 
-function classPropToObjectProp(
-  source: SourceFile,
-  prop: {
-    declaration: PropertyDeclaration
-    default?: PropertyAssignment
-    required?: PropertyAssignment
+function writeDataProperty(
+  writer: ts.CodeBlockWriter,
+  property: ts.PropertyDeclaration,
+) {
+  writeDocs(writer, property.getJsDocs())
+  writer
+    .write(property.getName())
+    .write(':')
+    .space()
+    .write(property.getInitializerOrThrow().getText())
+
+  const type = property.getTypeNode()
+
+  if (type) {
+    writer
+      .space()
+      .write('as')
+      .space()
+      .write(type.getText())
   }
-): ts.PropertyAssignment {
-  return createDocumentation(
-    f.createPropertyAssignment(
-      f.createIdentifier(prop.declaration.getName()),
-      f.createObjectLiteralExpression(
-        [
-          classPropTypeToObjectPropType(source, prop),
-          ...classPropOptionsToObjectPropOptions(source, prop),
-        ],
-        true,
-      ),
-    ),
-    prop.declaration.getJsDocs(),
-  )
+          
+  writer
+    .write(',')
+    .newLine()
 }
 
-function classPropsToObjectProps(
-  source: SourceFile,
-  vue: {
-    props: {
-      declaration: PropertyDeclaration
-      default?: PropertyAssignment
-      required?: PropertyAssignment
-    }[]
-  }
-): ts.PropertyAssignment {
-  return f.createPropertyAssignment(
-    f.createIdentifier('props'),
-    f.createObjectLiteralExpression(
-      vue.props.map(prop => classPropToObjectProp(source, prop)),
-      true,
-    ),
-  )
-}
+function writeComputed(
+  writer: ts.CodeBlockWriter,
+  computed: Record<string, {
+    getter?: ts.GetAccessorDeclaration
+    setter?: ts.SetAccessorDeclaration
+  }>
+) {
+  if (Object.keys(computed).length > 0) {
+    writer
+      .write('computed:')
+      .space()
+      .write('{')
+      .newLine()
+  
+    for (const [name, { getter, setter }] of Object.entries(computed)) {
+      if (getter) {
+        if (!setter) {
+          writeComputedGetter(writer, getter)
 
-
-function classDataToObjectData(
-  source: SourceFile,
-  vue: {
-    data: PropertyDeclaration[],
-  },
-): ts.MethodDeclaration {
-  const properties: ts.ObjectLiteralElementLike[] = []
-
-  for (const declaration of vue.data) {
-    const value = declaration.getInitializerOrThrow()
-    const type = declaration.getTypeNode()
-
-    // By default, initialize the data with whatever was on the other side of the declaration.
-    let initializer: ts.Expression = f.createIdentifier(value.getText())
-
-    // If there was a type declaration, port it to an `as` expression.
-    if (type) {
-      initializer = f.createIdentifier(`${value.getText()} as ${type.getText()}`)
+        } else {
+          writeComputedProperty(writer, name, getter, setter)
+        }
+      }
     }
-
-    properties.push(
-      createDocumentation(
-        f.createPropertyAssignment(
-          declaration.getName(),
-          initializer,
-        ),
-        declaration.getJsDocs(),
-      )
-    )
-  }
-  
-  return f.createMethodDeclaration(
-    undefined,
-    undefined,
-    undefined,
-    f.createIdentifier('data'),
-    undefined,
-    undefined,
-    [],
-    undefined,
-    f.createBlock(
-      [
-        f.createReturnStatement(
-          f.createObjectLiteralExpression(
-            properties,
-            true,
-          )
-        ),
-      ],
-      true,
-    )
-  )
-}
-
-function classComputedGetterToObjectComputedGetter(
-  source: SourceFile,
-  name: string,
-  getter: GetAccessorDeclaration,
-): ts.MethodDeclaration {
-  let getterReturnType: ts.TypeNode | undefined = undefined
-
-  if (getter.getReturnTypeNode()) {
-    getterReturnType = getter.getReturnTypeNodeOrThrow().compilerNode
-  
-  } else {
-    getterReturnType = f.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)
-    console.log(`Computed getter 「${name}」 will require a manual return type.`)
-  }
-
-  return f.createMethodDeclaration(
-    undefined,
-    undefined,
-    undefined,
-    f.createIdentifier(name),
-    undefined,
-    undefined,
-    [],
-    getterReturnType,
-    transformBlock(getter.getBodyOrThrow() as Block, true),
-  )
-}
-
-function classComputedPropertyToObjectComputedProperty(
-  source: SourceFile,
-  name: string,
-  getter: GetAccessorDeclaration,
-  setter: SetAccessorDeclaration,
-): ts.PropertyAssignment {
-  const setParameter = setter.getParameters()[0]
-
-  if (!setParameter) {
-    throw new Error('Computed setter doesn\'t seem to have a parameter.')
-  }
-
-  const setterDeclaration = f.createMethodDeclaration(
-    undefined,
-    undefined,
-    undefined,
-    f.createIdentifier('set'),
-    undefined,
-    undefined,
-    [setParameter.compilerNode],
-    undefined,
-    transformBlock(setter.getBodyOrThrow() as Block, true),
-  )
-
-  let getterReturnType: ts.TypeNode | undefined = undefined
-
-  // If there was a computed setter, Vue requires that the getter have
-  // an annotated return type of the same type argument as that setter's
-  // parameter. This is where we try to ensure that.
-  if (setParameter.getTypeNode()) {
-    getterReturnType = setParameter.getTypeNodeOrThrow().compilerNode
-
-  } else {
-    getterReturnType = f.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)
-    console.log(`Computed getter for 「${name}」 will require a manual return type.`)
-  }
-
-  const getterDeclaration = f.createMethodDeclaration(
-    undefined,
-    undefined,
-    undefined,
-    f.createIdentifier('get'),
-    undefined,
-    undefined,
-    [],
-    getterReturnType,
-    transformBlock(getter.getBodyOrThrow() as Block),
-  )
       
-  return f.createPropertyAssignment(
-    f.createIdentifier(name),
-    f.createObjectLiteralExpression(
-      [
-        getterDeclaration,
-        setterDeclaration,
-      ], 
-      true,
-    ),
-  )
+    writer
+      .write('}')
+      .write(',')
+      .newLine()
+  }
 }
 
-function classComputedToObjectComputed(
-  source: SourceFile,
-  vue: {
-    computed: Record<string, {
-      getter?: GetAccessorDeclaration
-      setter?: SetAccessorDeclaration
-    }>
-  }
-): ts.PropertyAssignment {
-  const properties: ts.ObjectLiteralElementLike[] = []
+function writeComputedProperty(
+  writer: ts.CodeBlockWriter,
+  name: string,
+  getter: ts.GetAccessorDeclaration,
+  setter: ts.SetAccessorDeclaration
+) {
+  writer
+    .write(name)
+    .write(':')
+    .space()
+    .write('{')
+    .newLine()
+    .withIndentationLevel(1, () => {
+      const setParameter = setter.getParameters()[0]
 
-  for (let [name, { getter, setter }] of Object.entries(vue.computed)) {
-    if (getter) {
-      if (setter) {
-        properties.push(
-          classComputedPropertyToObjectComputedProperty(
-            source,
-            name, 
-            getter, 
-            setter,
-          ),
-        )
-
-      } else {
-        properties.push(
-          classComputedGetterToObjectComputedGetter(
-            source, 
-            name, 
-            getter,
-          ),
-        )
+      if (!setParameter) {
+        throw new Error('Computed setter doesn\'t seem to have a parameter.')
       }
 
-    } else if (setter) {
-      throw new Error('Found an illegal computed setter without a getter.')
-    }
+      writeDocs(writer, getter.getJsDocs())
+      writer
+        .write(`get()`)
+        .write(':')
+        .space()
+        // Computed property getters need to match the setter's return type,
+        // But there's actually a variety of places this can be obtained...
+        // try them all before giving up with `any`.
+        .write(getter.getReturnTypeNode()?.getText() 
+            || setParameter.getTypeNode()?.getText() 
+            || 'any')
+        .newLine()
+        .write(getter.getBodyOrThrow().getText())
+        .write(',')
+        .newLine()
+
+      writeDocs(writer, setter.getJsDocs())
+      writer
+        .write('set(')
+        .write(setParameter.getText())
+        .write(')')
+        .newLine()
+        .write(setter.getBodyOrThrow().getText())
+        .write(',')
+        .newLine()
+    })
+    .write('}')
+    .write(',')
+    .newLine()
   }
 
-  return f.createPropertyAssignment(
-    f.createIdentifier('computed'),
-    f.createObjectLiteralExpression(properties, true),
-  )
+function writeComputedGetter(
+  writer: ts.CodeBlockWriter,
+  getter: ts.GetAccessorDeclaration
+) {
+  writeDocs(writer, getter.getJsDocs())
+  writer
+    .write(`${getter.getName()}()`)
+    .write(':')
+    .space()
+    .write(getter.getReturnTypeNode()?.getText() || 'any')
+    .newLine()
+    .write(getter.getBodyOrThrow().getText())
+    .write(',')
+    .newLine()
 }
 
-function classMethodsToObjectMethods(
-  source: SourceFile,
-  vue: {
-    methods: MethodDeclaration[]
+function writeMethods(
+  writer: ts.CodeBlockWriter,
+  methods: ts.MethodDeclaration[]
+) {
+  if (methods.length > 0) {
+    writer
+      .write('methods')
+      .write(':')
+      .space()
+      .write('{')
+      .newLine()
+      .withIndentationLevel(1, () => {
+        for (const method of methods) {
+          writeMethod(writer, method)
+        }
+      })
+      .write('}')
+      .write(',')
+      .newLine()
   }
-): ts.PropertyAssignment {
-  return f.createPropertyAssignment(
-    f.createIdentifier('methods'),
-    f.createObjectLiteralExpression(
-      vue.methods.map(method => 
-        // I really, really want to just pass the compiler node... but no dice.
-        // The values simply do not render.
-        f.createMethodDeclaration(
-          method.getDecorators()?.map(toTS),
-          method.getModifiers()?.map(modifier => modifier.compilerNode as ts.Modifier),
-          undefined,
-          f.createIdentifier(method.getName()),
-          undefined,
-          method.getTypeParameters()?.map(toTS),
-          method.getParameters()?.map(toTS),
-          method.getReturnTypeNode()?.compilerNode,
-          transformBlock(method.getBodyOrThrow() as Block, true),
-        ),
-      ),
-      true,
-    ),
-  )
 }
 
-export function classToObject(source: SourceFile) {
+function writeMethod(
+  writer: ts.CodeBlockWriter,
+  method: ts.MethodDeclaration
+) {
+  writeDocs(writer, method.getJsDocs())
+  writer
+    .newLineIfLastNot()
+    .write(method.getText())
+    .write(',')
+}
+
+export function classToObject(source: ts.SourceFile) {
   const vue = vue_class.extract(source)
 
   if (!vue) {
     return
   }
 
-  const properties: ts.ObjectLiteralElementLike[] = []
-  properties.push(classNameToPropName(source, vue))
+  const {
+    declaration,
+    decorator,
+    props,
+    data,
+    computed,
+    methods,
+    syncProps,
+    watch,
+  } = vue
 
-  // Add any properties we inherited from the @Component decorator.
-  // Note: this doesn't merge any Vue data that occurs in the class declaration.
-  for (let property of vue.decorator.properties) {
-    properties.push(property.compilerNode)
-  }
+  const callbacks: PostprocessCallback[] = [
+    source => source.formatText()
+  ]
 
-  if (vue.props.length > 0) {
-    properties.push(classPropsToObjectProps(source, vue))
-  }
+  source.addExportAssignment({
+    leadingTrivia: writer => {
+      writeDocs(writer, declaration.getJsDocs())
+    },
+    expression: writer => {
+      writer
+        .writeLine('Vue.extend({')
+        .withIndentationLevel(1, () => {
+          writeName(writer, declaration)
+          writeConfig(writer, decorator)
+          callbacks.push(...writeProps(writer, props))
+          writeData(writer, data)
+          writeComputed(writer, computed)
+          writeMethods(writer, methods)
+        })
+        .write('})')
+    },
+    isExportEquals: false,
+  })
 
-  if (vue.data.length > 0) {
-    properties.push(classDataToObjectData(source, vue))
-  }
-
-  if (Object.keys(vue.computed).length > 0) {
-    properties.push(classComputedToObjectComputed(source, vue))
-  }
-
-  if (vue.methods.length > 0) {
-    properties.push(classMethodsToObjectMethods(source, vue))
-  }
-
-  // Wrap the properties up in a call to Vue.extend().
-  const component = f.createCallExpression(
-    f.createIdentifier('Vue.extend'),
-    undefined,
-    [f.createObjectLiteralExpression(properties, true)]
-  )
-
-  // Save the docs.
-  let documentation: string
-
-  if (vue.declaration.getJsDocs().length > 0) {
-    documentation = vue.declaration.getJsDocs()[0].getFullText()
+  // Perform any processing that had to happen after we finished writing.
+  for (const callback of callbacks.reverse()) {
+    callback(source)
   }
 
   // Remove the class now that we're done reading everything.
   vue.declaration.remove()
-
-  // Add the new default export statement, printing from the object AST.
-  source.addExportAssignment({
-    expression: printNode(component),
-    isExportEquals: false,
-    leadingTrivia: writer => {
-      if (documentation) {
-        writer.writeLine(documentation)
-      }
-    }
-  })
-    
-  source.formatText()
 }
