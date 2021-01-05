@@ -4,17 +4,14 @@ This project contains a script that converts class-style TypeScript Vue componen
 
 ## Usage
 
-TODO upon release, but it's already usable with the following commands:
-
 ```
-npm install
-npm run build
-node dist/cli.js [component path]
+npm install -g vue-declassify
+vue-declassify -h
 ```
 
-In the near future, this will be pre-built for Linux usage and posted as a release.
+Then, use `vue-declassify [file]` to convert individual files.
 
-I highly recommend running your linter with auto-fix functionality afterwards, although all attempts were made to include reasonable formatting during transformation.
+I highly recommend running your linter with auto-fix functionality afterwards, although all attempts were made to include reasonable formatting during transformation. I may add command line options to automatically perform some code style changes later on.
 
 ## Progress
 
