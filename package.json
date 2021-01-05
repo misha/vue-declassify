@@ -1,6 +1,6 @@
 {
   "name": "vue-declassify",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Misha Soliterman <msoliter@gmail.com>",
   "description": "Convert Vue 2 class-based components into object-based syntax.",
   "repository": {
@@ -30,6 +30,7 @@
     "dev": "ts-node ./src/cli.ts",
     "clean": "rimraf ./dist/ ./exec/",
     "build": "npm run clean && tsc",
+    "prepublish": "npm run build",
     "test": "nyc ava --verbose",
     "test:watch": "ava --watch",
     "bundle": "npm run build && pkg . --out-dir ./exec/"
