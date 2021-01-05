@@ -43,8 +43,14 @@ function writeConfig(
     properties: ts.ObjectLiteralElementLike[]
   }
 ) {
-  for (const property of decorator.properties) {
-    writer.write(property.getText())
+  if (decorator.properties.length > 0) {
+    for (const property of decorator.properties) {
+      writer.write(property.getText())
+    }
+
+    writer
+      .write(',')
+      .newLine()
   }
 }
 
@@ -356,9 +362,9 @@ function writeMethod(
 ) {
   writeDocs(writer, method.getJsDocs())
   writer
-    .newLineIfLastNot()
     .write(method.getText())
     .write(',')
+    .newLine()
 }
 
 function writeWatches(
