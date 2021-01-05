@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import fs from 'fs'
 import program from 'commander'
 import { IndentationText, NewLineKind, Project, QuoteKind } from 'ts-morph'
