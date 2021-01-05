@@ -402,35 +402,14 @@ function writeWatch(
 ) {
   writeDocs(writer, watch.declaration.getJsDocs())
   writer
-    .write(watch.declaration.getName())
+    .quote()
+    .write(watch.path)
+    .quote()
     .write(':')
     .space()
     .write('{')
     .newLine()
     .withIndentationLevel(1, () => {
-      writer
-        .write('path:')
-        .space()
-        .quote()
-        .write(watch.path)
-        .quote()
-        .write(',')
-        .newLine()
-
-      if (watch.immediate) {
-        writer
-          .write(watch.immediate.getText())
-          .write(',')
-          .newLine()
-      }
-
-      if (watch.deep) {
-        writer
-          .write(watch.deep.getText())
-          .write(',')
-          .newLine()
-      }
-
       writer
         .write(watch.declaration
           .getModifiers()
@@ -452,6 +431,20 @@ function writeWatch(
         })
         .write(',')
         .newLine()
+        
+      if (watch.immediate) {
+        writer
+          .write(watch.immediate.getText())
+          .write(',')
+          .newLine()
+      }
+
+      if (watch.deep) {
+        writer
+          .write(watch.deep.getText())
+          .write(',')
+          .newLine()
+      }
     })
     .writeLine('},')
 }

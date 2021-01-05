@@ -594,8 +594,7 @@ export default Vue.extend({
     },
   },
   watch: {
-    executeAnimationOnLoading: {
-      path: 'loading',
+    'loading': {
       handler(current: boolean, previous: boolean) {
         if (current && !previous) {
           console.log('Animating now!')
@@ -643,8 +642,7 @@ export default Vue.extend({
     /**
      * Show an animation when loading.
      */
-    logOnLoading: {
-      path: 'loading',
+    'loading': {
       handler() {
         if (this.loading) {
           console.log('now loading')
@@ -686,15 +684,14 @@ export default Vue.extend({
     },
   },
   watch: {
-    logOnLoading: {
-      path: 'loading',
-      immediate: true,
-      deep: false,
+    'loading': {
       handler() {
         if (this.loading) {
           console.log('now loading')
         }
       },
+      immediate: true,
+      deep: false,
     },
   },
 });
