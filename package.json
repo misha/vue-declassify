@@ -1,6 +1,6 @@
 {
   "name": "vue-declassify",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "author": "Misha Soliterman <msoliter@gmail.com>",
   "description": "Convert Vue 2 class-based components into object-based syntax.",
   "repository": {
