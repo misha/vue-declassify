@@ -4,6 +4,17 @@ import * as imports from './imports'
 
 type PostprocessCallback = (source: ts.SourceFile) => void
 
+const LIFECYCLE_HOOKS = Object.freeze([
+  'beforeCreate',
+  'created',
+  'beforeMount',
+  'mounted',
+  'beforeUpdate',
+  'updated',
+  'beforeDestroy',
+  'destroyed',
+])
+
 function writeDocs(
   writer: ts.CodeBlockWriter,
   docs: ts.JSDoc[],
@@ -341,14 +352,30 @@ function writeMethods(
   writer: ts.CodeBlockWriter,
   methods: ts.MethodDeclaration[]
 ) {
-  if (methods.length > 0) {
+  const lifecycleMethods: ts.MethodDeclaration[] = []
+  const normalMethods: ts.MethodDeclaration[] = []
+
+  for (const method of methods) {
+    if (LIFECYCLE_HOOKS.includes(method.getName())) {
+      lifecycleMethods.push(method)
+
+    } else {
+      normalMethods.push(method)
+    }
+  }
+
+  for (const method of lifecycleMethods) {
+    writeMethod(writer, method)
+  }
+
+  if (normalMethods.length > 0) {
     writer
       .write('methods:')
       .space()
       .write('{')
       .newLine()
       .withIndentationLevel(1, () => {
-        for (const method of methods) {
+        for (const method of normalMethods) {
           writeMethod(writer, method)
         }
       })

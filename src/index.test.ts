@@ -699,3 +699,34 @@ export default Vue.extend({
   
   validate(t, source, truth)
 })
+
+test('converts lifecycle methods correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+  
+  created() {
+    console.log('Hello, world!')
+  }
+
+  destroyed() {
+    console.log('Goodbye, world.')
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+export default Vue.extend({
+  name: 'Component',
+  created() {
+    console.log('Hello, world!')
+  },
+  destroyed() {
+    console.log('Goodbye, world.')
+  },
+});
+  `
+  
+  validate(t, source, truth)
+})
