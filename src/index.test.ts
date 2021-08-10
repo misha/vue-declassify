@@ -595,6 +595,7 @@ export default Vue.extend({
   },
   watch: {
     'loading': {
+      // @ts-ignore
       handler: 'executeAnimationOnLoading',
     },
   },
@@ -647,9 +648,11 @@ export default Vue.extend({
   },
   watch: {
     'enabled': {
+      // @ts-ignore
       handler: 'logOnStatusChanged',
     },
     'clicks': {
+      // @ts-ignore
       handler: 'logOnStatusChanged',
     },
   },
@@ -697,6 +700,7 @@ export default Vue.extend({
   },
   watch: {
     'loading': {
+      // @ts-ignore
       handler: 'logOnLoading',
     },
   },
@@ -748,6 +752,7 @@ export default Vue.extend({
   },
   watch: {
     'loading': {
+      // @ts-ignore
       handler: 'logOnLoading',
       immediate: true,
       deep: false,
