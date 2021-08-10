@@ -595,9 +595,7 @@ export default Vue.extend({
   },
   watch: {
     'loading': {
-      handler() {
-        this.executeAnimationOnLoading()
-      },
+      handler: 'executeAnimationOnLoading',
     },
   },
   methods: {
@@ -649,14 +647,10 @@ export default Vue.extend({
   },
   watch: {
     'enabled': {
-      handler() {
-        this.logOnStatusChanged()
-      },
+      handler: 'logOnStatusChanged',
     },
     'clicks': {
-      handler() {
-        this.logOnStatusChanged()
-      },
+      handler: 'logOnStatusChanged',
     },
   },
   methods: {
@@ -680,7 +674,7 @@ export default class Component extends Vue {
   loading!: boolean
 
   /**
-   * Show an animation when loading.
+   * Log something when loading.
    */
   @Watch('loading')
   logOnLoading() {
@@ -703,14 +697,12 @@ export default Vue.extend({
   },
   watch: {
     'loading': {
-      handler() {
-        this.logOnLoading()
-      },
+      handler: 'logOnLoading',
     },
   },
   methods: {
     /**
-     * Show an animation when loading.
+     * Log something when loading.
      */
     logOnLoading() {
       if (this.loading) {
@@ -733,7 +725,7 @@ export default class Component extends Vue {
   loading!: boolean
 
   /**
-   * Show an animation when loading.
+   * Log something when loading.
    */
   @Watch('loading', { immediate: true, deep: false })
   logOnLoading() {
@@ -756,16 +748,14 @@ export default Vue.extend({
   },
   watch: {
     'loading': {
-      handler() {
-        this.logOnLoading()
-      },
+      handler: 'logOnLoading',
       immediate: true,
       deep: false,
     },
   },
   methods: {
     /**
-     * Show an animation when loading.
+     * Log something when loading.
      */
     logOnLoading() {
       if (this.loading) {

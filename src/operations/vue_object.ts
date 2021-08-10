@@ -437,16 +437,9 @@ function writeWatch(
     .newLine()
     .withIndentationLevel(1, () => {
       writer
-        .write('handler()')
+        .write('handler:')
         .space()
-        .write('{')
-        .newLine()
-        .withIndentationLevel(1, () => {
-          writer
-            .write(`this.${watch.method}`)
-            .write('()')
-        })
-        .write('}')
+        .write(`'${watch.method}'`)
         .write(',')
         .newLine()
         
