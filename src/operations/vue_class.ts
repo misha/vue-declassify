@@ -93,8 +93,8 @@ function unpackWatchDecorator(decorator: Decorator) {
 
   const configuration: {
     path: string
-    deep?: PropertyAssignment
-    immediate?: PropertyAssignment
+    deep?: string
+    immediate?: string
   } = {
     path: watchPathArgument.getLiteralValue(),
   }
@@ -113,7 +113,7 @@ function unpackWatchDecorator(decorator: Decorator) {
         throw new Error('The `deep` property to @Watch is not a property assignment.')
       }
 
-      configuration.deep = deepProperty
+      configuration.deep = deepProperty.getText()
     }
 
     const immediateProperty = watchOptionsArgument.getProperty('immediate')
@@ -123,7 +123,7 @@ function unpackWatchDecorator(decorator: Decorator) {
         throw new Error('The `immediate` property to @Watch is not a property assignment.')
       }
 
-      configuration.immediate = immediateProperty
+      configuration.immediate = immediateProperty.getText()
     }
   }
 
@@ -155,9 +155,9 @@ function unpackClass(declaration: ClassDeclaration) {
 
   const watches: {
     path: string
-    declaration: MethodDeclaration
-    immediate?: PropertyAssignment
-    deep?: PropertyAssignment
+    method: string
+    immediate?: string
+    deep?: string
   }[] = []
 
   for (const property of declaration.getInstanceProperties()) {
@@ -214,18 +214,19 @@ function unpackClass(declaration: ClassDeclaration) {
     }
   }
 
-  for (const method of declaration.getInstanceMethods()) {
-    const decorator = method.getDecorator('Watch')
-    
-    if (decorator) {
-      watches.push({
-        declaration: method,
-        ...unpackWatchDecorator(decorator),
-      })
-      
-    } else {
-      methods.push(method)
+  for (const method of declaration.getInstanceMethods()) {   
+    for (const decorator of method.getDecorators()) {
+      if (decorator.getName() === 'Watch') {
+        watches.push({
+          method: method.getName(),
+          ...unpackWatchDecorator(decorator),
+        })
+        
+        decorator.remove()
+      }
     }
+
+    methods.push(method)
   }
 
   return {

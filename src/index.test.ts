@@ -1,4 +1,4 @@
-import test, { ExecutionContext } from 'ava'
+import test, { ExecutionContext, skip } from 'ava'
 import { IndentationText, NewLineKind, Project, QuoteKind } from 'ts-morph'
 
 import { declassify } from './index'
@@ -595,11 +595,74 @@ export default Vue.extend({
   },
   watch: {
     'loading': {
-      handler(current: boolean, previous: boolean) {
-        if (current && !previous) {
-          console.log('Animating now!')
-        }
+      handler() {
+        this.executeAnimationOnLoading()
       },
+    },
+  },
+  methods: {
+    executeAnimationOnLoading(current: boolean, previous: boolean) {
+      if (current && !previous) {
+        console.log('Animating now!')
+      }
+    },
+  },
+});
+  `
+  
+  validate(t, source, truth)
+})
+
+test('converts multiple watches correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+  
+  @Prop({ required: true })
+  enabled!: boolean
+
+  clicks = 0
+
+  @Watch('enabled')
+  @Watch('clicks')
+  logOnStatusChanged() {
+    console.log('Enabled: ' + this.enabled)
+    console.log('Clicks: ' + this.clicks)
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+export default Vue.extend({
+  name: 'Component',
+  props: {
+    enabled: {
+      type: Boolean,
+      required: true,
+    },
+  },
+  data() {
+    return {
+      clicks: 0,
+    };
+  },
+  watch: {
+    'enabled': {
+      handler() {
+        this.logOnStatusChanged()
+      },
+    },
+    'clicks': {
+      handler() {
+        this.logOnStatusChanged()
+      },
+    },
+  },
+  methods: {
+    logOnStatusChanged() {
+      console.log('Enabled: ' + this.enabled)
+      console.log('Clicks: ' + this.clicks)
     },
   },
 });
@@ -639,15 +702,20 @@ export default Vue.extend({
     },
   },
   watch: {
+    'loading': {
+      handler() {
+        this.logOnLoading()
+      },
+    },
+  },
+  methods: {
     /**
      * Show an animation when loading.
      */
-    'loading': {
-      handler() {
-        if (this.loading) {
-          console.log('now loading')
-        }
-      },
+    logOnLoading() {
+      if (this.loading) {
+        console.log('now loading')
+      }
     },
   },
 });
@@ -664,6 +732,9 @@ export default class Component extends Vue {
   @Prop({ required: true })
   loading!: boolean
 
+  /**
+   * Show an animation when loading.
+   */
   @Watch('loading', { immediate: true, deep: false })
   logOnLoading() {
     if (this.loading) {
@@ -686,12 +757,20 @@ export default Vue.extend({
   watch: {
     'loading': {
       handler() {
-        if (this.loading) {
-          console.log('now loading')
-        }
+        this.logOnLoading()
       },
       immediate: true,
       deep: false,
+    },
+  },
+  methods: {
+    /**
+     * Show an animation when loading.
+     */
+    logOnLoading() {
+      if (this.loading) {
+        console.log('now loading')
+      }
     },
   },
 });

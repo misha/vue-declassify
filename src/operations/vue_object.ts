@@ -398,9 +398,9 @@ function writeWatches(
   writer: ts.CodeBlockWriter,
   watches: {
     path: string,
-    declaration: ts.MethodDeclaration
-    immediate?: ts.PropertyAssignment
-    deep?: ts.PropertyAssignment
+    method: string,
+    immediate?: string
+    deep?: string
   }[]
 ) {
   if (watches.length > 0) {
@@ -422,12 +422,11 @@ function writeWatch(
   writer: ts.CodeBlockWriter,
   watch: {
     path: string,
-    declaration: ts.MethodDeclaration,
-    immediate?: ts.PropertyAssignment,
-    deep?: ts.PropertyAssignment,
+    method: string,
+    immediate?: string,
+    deep?: string,
   }
 ) {
-  writeDocs(writer, watch.declaration.getJsDocs())
   writer
     .quote()
     .write(watch.path)
@@ -438,37 +437,29 @@ function writeWatch(
     .newLine()
     .withIndentationLevel(1, () => {
       writer
-        .write(watch.declaration
-          .getModifiers()
-          .map(modifier => modifier.getText())
-          .join(' ')
-        )
-        .conditionalWrite(!writer.isLastSpace(), ' ')
-        .write('handler')
-        .write('(')
-        .write(watch.declaration
-          .getParameters()
-          .map(parameter => parameter.getText())
-          .join(', ')
-        )
-        .write(')')
+        .write('handler()')
         .space()
+        .write('{')
+        .newLine()
         .withIndentationLevel(1, () => {
-          writer.write(watch.declaration.getBodyOrThrow().getText())
+          writer
+            .write(`this.${watch.method}`)
+            .write('()')
         })
+        .write('}')
         .write(',')
         .newLine()
         
       if (watch.immediate) {
         writer
-          .write(watch.immediate.getText())
+          .write(watch.immediate)
           .write(',')
           .newLine()
       }
 
       if (watch.deep) {
         writer
-          .write(watch.deep.getText())
+          .write(watch.deep)
           .write(',')
           .newLine()
       }
@@ -511,8 +502,8 @@ export function classToObject(source: ts.SourceFile) {
           callbacks.push(...writeProps(writer, props))
           writeData(writer, data)
           writeComputed(writer, computed)
-          writeMethods(writer, methods)
           writeWatches(writer, watches)
+          writeMethods(writer, methods)
         })
         .write('})')
     },
