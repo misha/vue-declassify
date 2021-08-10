@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts">
-import { Component, Prop, Vue } from 'vue-property-decorator'
+import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
 
 import TestHelper from './TestHelper.vue'
 
@@ -44,6 +44,11 @@ export default class Test extends Vue {
 
   get initialMessage(): string | undefined {
     return this.internalMessages[0]
+  }
+
+  @Watch('count')
+  log(count: number) {
+    console.log(count)
   }
 }
 </script>
