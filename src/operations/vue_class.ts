@@ -215,27 +215,24 @@ function unpackClass(declaration: ClassDeclaration) {
   }
 
   function handleEmitDecorator(decorator: Decorator, method: MethodDeclaration) {
-    const decoratorArguments = decorator.getArguments()
-
-    if (decoratorArguments.length === 0) {
-      throw new Error('@Emit does not have at least its first argument.')
-    }
-
-    const emitNameLiteral = decoratorArguments[0]
+    const [emitNameLiteral] = decorator.getArguments();
 
     if (!(emitNameLiteral instanceof StringLiteral)) {
-      throw new Error('The first argument to @Emit is not a string literal.')
+      throw new Error('The first argument to @Emit must be a string literal.');
     }
 
     const emitName = emitNameLiteral.getLiteralValue();
-    let emitStatement = `this.$emit(\'${emitName}\');`;
+    const parameters = method.getParameters().map(param => param.getName());
+    const parameterList = parameters.join(', ');
+    const emitStatement = `this.$emit('${emitName}'${parameterList ? `, ${parameterList}` : ''});`;
 
-    if (method.getBodyText() !== "") {
-      emitStatement = '\n' + emitStatement;
-    }
+    const updatedBody = method.getBodyText()
+        ? `${method.getBodyText()}\n${emitStatement}`
+        : emitStatement;
 
-    method.setBodyText(method.getBodyText()  + emitStatement)
+    method.setBodyText(updatedBody);
   }
+
 
   for (const method of declaration.getInstanceMethods()) {
     for (const decorator of method.getDecorators()) {

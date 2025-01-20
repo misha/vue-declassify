@@ -832,3 +832,31 @@ export default Vue.extend({
 
   validate(t, source, truth)
 })
+
+test('emits should emit the method parameters of the decorated method', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+  
+  @Emit('something')
+  doSomething(someNumber: number, someString: string): void {
+      console.log('Hello, world!')
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+export default Vue.extend({
+  name: 'Component',
+  methods: {
+    doSomething(someNumber: number, someString: string): void {
+      console.log('Hello, world!')
+      this.$emit('something', someNumber, someString);
+    },
+  },
+});
+  `
+
+  validate(t, source, truth)
+})
