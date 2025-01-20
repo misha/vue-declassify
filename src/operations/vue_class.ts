@@ -214,7 +214,30 @@ function unpackClass(declaration: ClassDeclaration) {
     }
   }
 
-  for (const method of declaration.getInstanceMethods()) {   
+  function handleEmitDecorator(decorator: Decorator, method: MethodDeclaration) {
+    const decoratorArguments = decorator.getArguments()
+
+    if (decoratorArguments.length === 0) {
+      throw new Error('@Emit does not have at least its first argument.')
+    }
+
+    const emitNameLiteral = decoratorArguments[0]
+
+    if (!(emitNameLiteral instanceof StringLiteral)) {
+      throw new Error('The first argument to @Emit is not a string literal.')
+    }
+
+    const emitName = emitNameLiteral.getLiteralValue();
+    let emitStatement = `this.$emit(\'${emitName}\');`;
+
+    if (method.getBodyText() !== "") {
+      emitStatement = '\n' + emitStatement;
+    }
+
+    method.setBodyText(method.getBodyText()  + emitStatement)
+  }
+
+  for (const method of declaration.getInstanceMethods()) {
     for (const decorator of method.getDecorators()) {
       if (decorator.getName() === 'Watch') {
         watches.push({
@@ -222,6 +245,11 @@ function unpackClass(declaration: ClassDeclaration) {
           ...unpackWatchDecorator(decorator),
         })
         
+        decorator.remove()
+      }
+
+      else if(decorator.getName() === 'Emit') {
+        handleEmitDecorator(decorator, method);
         decorator.remove()
       }
     }

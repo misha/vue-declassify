@@ -18,8 +18,8 @@ const project = new Project({
 })
 
 function validate<T>(
-  context: ExecutionContext<T>, 
-  source: string, 
+  context: ExecutionContext<T>,
+  source: string,
   truth: string,
   mode: 'ts' | 'vue' = 'ts',
 ) {
@@ -488,7 +488,7 @@ export default Vue.extend({
   },
 });
   `
-  
+
   validate(t, source, truth)
 })
 
@@ -530,7 +530,7 @@ export default Vue.extend({
   },
 });
   `
-  
+
   validate(t, source, truth)
 })
 
@@ -562,7 +562,7 @@ export default Vue.extend({
   },
 });
   `
-  
+
   validate(t, source, truth)
 })
 
@@ -608,7 +608,7 @@ export default Vue.extend({
   },
 });
   `
-  
+
   validate(t, source, truth)
 })
 
@@ -664,7 +664,7 @@ export default Vue.extend({
   },
 });
   `
-  
+
   validate(t, source, truth)
 })
 
@@ -716,7 +716,7 @@ export default Vue.extend({
   },
 });
   `
-  
+
   validate(t, source, truth)
 })
 
@@ -770,7 +770,7 @@ export default Vue.extend({
   },
 });
   `
-  
+
   validate(t, source, truth)
 })
 
@@ -801,6 +801,34 @@ export default Vue.extend({
   },
 });
   `
+
+  validate(t, source, truth)
+})
+
+test('converts emit decorators correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
   
+  @Emit('something')
+  doSomething(): void {
+      console.log('Hello, world!')
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+export default Vue.extend({
+  name: 'Component',
+  methods: {
+    doSomething(): void {
+      console.log('Hello, world!')
+      this.$emit('something');
+    },
+  },
+});
+  `
+
   validate(t, source, truth)
 })
