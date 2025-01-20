@@ -51,7 +51,7 @@ export default class Test extends Vue {
     console.log(count)
   }
 
-  @Emit()
+  @Emit('something)
   doSomething(): void {
       this.log(5);
   }
