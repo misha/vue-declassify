@@ -130,6 +130,38 @@ function unpackWatchDecorator(decorator: Decorator) {
   return configuration
 }
 
+// Immediately rewrites @Emit by appending it to the end of its function.
+function rewriteEmitDecorator(method: MethodDeclaration, decorator: Decorator) {
+  const [nameLiteral] = decorator.getArguments()
+  // The name for @Emit is either the decorator's first argument, or defaults to the method name.
+  let name: string
+
+  if (nameLiteral) {
+    if (!(nameLiteral instanceof StringLiteral)) {
+      throw new Error('The first argument to @Emit must be a string literal.')
+    }
+
+    name = nameLiteral.getLiteralValue()
+  } else {
+    name = method.getName()
+  }
+
+  const parameters = method
+    .getParameters()
+    .map(parameter => parameter.getName())
+    .join(', ')
+
+  let statement: string
+
+  if (parameters) {
+    statement = `this.$emit('${name}', ${parameters})`
+  } else {
+    statement = `this.$emit('${name}')`
+  }
+  
+  method.setBodyText(`${method.getBodyText()}\n${statement}`)
+}
+
 // Unpacks a Vue class declaration into its Vue properties.
 function unpackClass(declaration: ClassDeclaration) {
   const props: {
@@ -214,26 +246,6 @@ function unpackClass(declaration: ClassDeclaration) {
     }
   }
 
-  function handleEmitDecorator(decorator: Decorator, method: MethodDeclaration) {
-    const [emitNameLiteral] = decorator.getArguments();
-
-    if (!(emitNameLiteral instanceof StringLiteral)) {
-      throw new Error('The first argument to @Emit must be a string literal.');
-    }
-
-    const emitName = emitNameLiteral.getLiteralValue();
-    const parameters = method.getParameters().map(param => param.getName());
-    const parameterList = parameters.join(', ');
-    const emitStatement = `this.$emit('${emitName}'${parameterList ? `, ${parameterList}` : ''});`;
-
-    const updatedBody = method.getBodyText()
-        ? `${method.getBodyText()}\n${emitStatement}`
-        : emitStatement;
-
-    method.setBodyText(updatedBody);
-  }
-
-
   for (const method of declaration.getInstanceMethods()) {
     for (const decorator of method.getDecorators()) {
       if (decorator.getName() === 'Watch') {
@@ -243,10 +255,9 @@ function unpackClass(declaration: ClassDeclaration) {
         })
         
         decorator.remove()
-      }
-
-      else if(decorator.getName() === 'Emit') {
-        handleEmitDecorator(decorator, method);
+      
+      } else if (decorator.getName() === 'Emit') {
+        rewriteEmitDecorator(method, decorator)
         decorator.remove()
       }
     }
