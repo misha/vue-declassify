@@ -52,8 +52,8 @@ export default class Test extends Vue {
   }
 
   @Emit('something')
-  doSomething(): void {
-      this.log(5);
+  doSomething() {
+    this.log(5)
   }
 }
 </script>

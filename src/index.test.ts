@@ -805,14 +805,14 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test('converts emit decorators correctly', t => {
+test('converts unnamed emits correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
   
-  @Emit('something')
-  doSomething(): void {
-      console.log('Hello, world!')
+  @Emit()
+  onGreet() {
+    console.log('Hello, world!')
   }
 }
   `
@@ -822,9 +822,9 @@ import Vue from 'vue';
 export default Vue.extend({
   name: 'Component',
   methods: {
-    doSomething(): void {
+    onGreet() {
       console.log('Hello, world!')
-      this.$emit('something');
+      this.$emit('onGreet')
     },
   },
 });
@@ -833,14 +833,14 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test('emits should emit the method parameters of the decorated method', t => {
+test('converts named emits correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
   
-  @Emit('something')
-  doSomething(someNumber: number, someString: string): void {
-      console.log('Hello, world!')
+  @Emit('greet')
+  onGreet() {
+    console.log('Hello, world!')
   }
 }
   `
@@ -850,9 +850,67 @@ import Vue from 'vue';
 export default Vue.extend({
   name: 'Component',
   methods: {
-    doSomething(someNumber: number, someString: string): void {
+    onGreet() {
       console.log('Hello, world!')
-      this.$emit('something', someNumber, someString);
+      this.$emit('greet')
+    },
+  },
+});
+  `
+
+  validate(t, source, truth)
+})
+
+test('converts emits on functions with arguments correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+  
+  @Emit('greet')
+  onGreet(name: string) {
+    console.log(\`Hello, \${name}!\`)
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+export default Vue.extend({
+  name: 'Component',
+  methods: {
+    onGreet(name: string) {
+      console.log(\`Hello, \${name}!\`)
+      this.$emit('greet', name)
+    },
+  },
+});
+  `
+
+  validate(t, source, truth)
+})
+
+test('converts multiple emits correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+  
+  @Emit()
+  @Emit('greet')
+  onGreet(name: string) {
+    console.log(\`Hello, \${name}!\`)
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+export default Vue.extend({
+  name: 'Component',
+  methods: {
+    onGreet(name: string) {
+      console.log(\`Hello, \${name}!\`)
+      this.$emit('onGreet', name)
+      this.$emit('greet', name)
     },
   },
 });
