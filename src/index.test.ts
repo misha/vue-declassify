@@ -918,3 +918,40 @@ export default Vue.extend({
 
   validate(t, source, truth)
 })
+
+test('converts emits on functions with return value', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+  
+  @Emit('greet')
+  onGreet(name: string) {
+    console.log(\`Hello, \${name}!\`)
+    if (!name) {
+      return "Hello, you!"
+    }
+    return \`Hello, \${name}!\`
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+export default Vue.extend({
+  name: 'Component',
+  methods: {
+    onGreet(name: string) {
+      console.log(\`Hello, \${name}!\`)
+      if (!name) {
+        this.$emit('greet', "Hello, you!")
+        return
+      }
+      this.$emit('greet', \`Hello, \${name}!\`)
+      return
+    },
+  },
+});
+  `
+
+  validate(t, source, truth)
+})
