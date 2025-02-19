@@ -140,7 +140,6 @@ function rewriteEmitDecorator(method: MethodDeclaration, decorator: Decorator) {
     if (!(nameLiteral instanceof StringLiteral)) {
       throw new Error('The first argument to @Emit must be a string literal.')
     }
-
     name = nameLiteral.getLiteralValue()
   } else {
     name = method.getName()
@@ -151,15 +150,32 @@ function rewriteEmitDecorator(method: MethodDeclaration, decorator: Decorator) {
     .map(parameter => parameter.getName())
     .join(', ')
 
-  let statement: string
+  const bodyText = method.getBodyText();
+  const hasReturnValue = !!bodyText?.includes("return ");
+  let newBodyText: string;
 
-  if (parameters) {
-    statement = `this.$emit('${name}', ${parameters})`
+  if (hasReturnValue && bodyText) {
+    newBodyText = replaceReturnWithEmit(bodyText, name);
+  } else if (parameters) {
+    newBodyText= `${bodyText}\nthis.$emit('${name}', ${parameters})`
   } else {
-    statement = `this.$emit('${name}')`
+    newBodyText = `${bodyText}\nthis.$emit('${name}')`
   }
-  
-  method.setBodyText(`${method.getBodyText()}\n${statement}`)
+  method.setBodyText(newBodyText)
+}
+
+function replaceReturnWithEmit(text: string, eventName: string): string {
+  const lines = text.split('\n');
+  const replacedLines = lines.map(line => {
+    const match = RegExp(/^return\s+(.+)$/).exec(line.trim());
+    if (match) {
+      const value = match[1];
+      return `this.$emit('${eventName}', ${value})\nreturn`;
+    } else {
+      return line;
+    }
+  });
+  return replacedLines.join('\n');
 }
 
 // Unpacks a Vue class declaration into its Vue properties.
