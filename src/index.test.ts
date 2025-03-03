@@ -1,4 +1,4 @@
-import test, { ExecutionContext, skip } from 'ava'
+import test, { ExecutionContext } from 'ava'
 import { IndentationText, NewLineKind, Project, QuoteKind } from 'ts-morph'
 
 import { declassify } from './index'
@@ -940,13 +940,84 @@ import Vue from 'vue';
 export default Vue.extend({
   name: 'Component',
   methods: {
-    onGreet(name: string) {
+    async onGreet(name: string) {
       console.log(\`Hello, \${name}!\`)
       if (!name) {
-        this.$emit('greet', "Hello, you!")
+        this.$emit('greet', await "Hello, you!")
         return
       }
-      this.$emit('greet', \`Hello, \${name}!\`)
+      this.$emit('greet', await \`Hello, \${name}!\`)
+      return
+    },
+  },
+});
+  `
+
+  validate(t, source, truth)
+})
+
+test('converts emits on functions with return value ignoring nested returns', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+  
+  @Emit('greet')
+  onGreet(name: string) {
+    console.log(\`Hello, \${name}!\`)
+    if (!name) {
+      return () => {
+        return "Hello, you!"
+      }
+    }
+    return \`Hello, \${name}!\`
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+export default Vue.extend({
+  name: 'Component',
+  methods: {
+    async onGreet(name: string) {
+      console.log(\`Hello, \${name}!\`)
+      if (!name) {
+        this.$emit('greet', await () => {
+          return "Hello, you!"
+        })
+        return
+      }
+      this.$emit('greet', await \`Hello, \${name}!\`)
+      return
+    },
+  },
+});
+  `
+
+  validate(t, source, truth)
+})
+
+test('converts emits on functions with return value as Promise', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+  
+  @Emit('greet')
+  onGreet() {
+    const promiseReturn = Promise.resolve("Hello")
+    return promiseReturn
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+export default Vue.extend({
+  name: 'Component',
+  methods: {
+    async onGreet() {
+      const promiseReturn = Promise.resolve("Hello")
+      this.$emit('greet', await promiseReturn)
       return
     },
   },
