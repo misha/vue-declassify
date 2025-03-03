@@ -33,6 +33,7 @@
     "prepublish": "npm run build",
     "test": "nyc ava --verbose",
     "test:watch": "ava --watch",
+    "type-check": "tsc --noEmit",
     "bundle": "npm run build && pkg . --out-dir ./exec/"
   },
   "dependencies": {
