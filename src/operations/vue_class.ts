@@ -1,4 +1,19 @@
-import { ClassDeclaration, Decorator, GetAccessorDeclaration, MethodDeclaration, ObjectLiteralExpression, PropertyAssignment, PropertyDeclaration, SetAccessorDeclaration, SourceFile, StringLiteral } from 'ts-morph'
+import {
+  ClassDeclaration,
+  Decorator,
+  GetAccessorDeclaration,
+  MethodDeclaration,
+  Node,
+  NodeParentType,
+  ObjectLiteralExpression,
+  PropertyAssignment,
+  PropertyDeclaration,
+  SetAccessorDeclaration,
+  SourceFile,
+  StringLiteral,
+  SyntaxKind,
+  ts
+} from 'ts-morph'
 
 function unpackComponentDecorator(decorator: Decorator) {
   const decoratorArguments = decorator.getArguments()
@@ -151,31 +166,52 @@ function rewriteEmitDecorator(method: MethodDeclaration, decorator: Decorator) {
     .join(', ')
 
   const bodyText = method.getBodyText();
-  const hasReturnValue = !!bodyText?.includes("return ");
+  const hasReturnValue = method.getDescendantsOfKind(SyntaxKind.ReturnStatement).length > 0;
+
   let newBodyText: string;
 
-  if (hasReturnValue && bodyText) {
-    newBodyText = replaceReturnWithEmit(bodyText, name);
+  if (hasReturnValue) {
+    newBodyText = replaceReturnsExceptInNestedFunctions(method, name);
   } else if (parameters) {
-    newBodyText= `${bodyText}\nthis.$emit('${name}', ${parameters})`
+    newBodyText = `${bodyText}\nthis.$emit('${name}', ${parameters})`
   } else {
     newBodyText = `${bodyText}\nthis.$emit('${name}')`
   }
   method.setBodyText(newBodyText)
 }
 
-function replaceReturnWithEmit(text: string, eventName: string): string {
-  const lines = text.split('\n');
-  const replacedLines = lines.map(line => {
-    const match = RegExp(/^return\s+(.+)$/).exec(line.trim());
-    if (match) {
-      const value = match[1];
-      return `this.$emit('${eventName}', ${value})\nreturn`;
-    } else {
-      return line;
+function replaceReturnsExceptInNestedFunctions(methodDeclaration: MethodDeclaration, eventName: string): string {
+  const body = methodDeclaration.getBody();
+  if (!body) return "";
+
+  const allReturnStatements = methodDeclaration.getDescendantsOfKind(SyntaxKind.ReturnStatement);
+
+  const returnsToReplace = allReturnStatements.filter(returnStmt => {
+    let parent: NodeParentType<ts.Node> = returnStmt.getParent();
+
+    while (parent && parent !== body) {
+      if (
+        Node.isFunctionDeclaration(parent) ||
+        Node.isArrowFunction(parent) ||
+        Node.isFunctionExpression(parent) ||
+        Node.isMethodDeclaration(parent) && parent !== methodDeclaration
+      ) {
+        return false;
+      }
+      parent = parent.getParent();
     }
+    return true;
   });
-  return replacedLines.join('\n');
+  //we should only set method as async if return type is a Promise but testing that with ts-morph seems unreliable
+  methodDeclaration.setIsAsync(true);
+  for (const returnStmt of returnsToReplace) {
+    const expression = returnStmt.getExpression();
+    if (expression) {
+      const replacementText = `this.$emit('${eventName}', await ${expression.getText()})\nreturn`;
+      returnStmt.replaceWithText(replacementText);
+    }
+  }
+  return methodDeclaration.getBodyText() ?? "";
 }
 
 // Unpacks a Vue class declaration into its Vue properties.
