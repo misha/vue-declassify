@@ -73,13 +73,16 @@ function writeProps(
 ): PostprocessCallback[] {
   const callbacks: PostprocessCallback[] = []
 
-  if (props.length > 0) {
+  if (props.length > 0 || vModel) {
     writer
       .write('props:')
       .space()
       .write('{')
       .newLine()
       .withIndentationLevel(1, () => {
+        if (vModel) {
+          callbacks.push(...writeProp(writer, vModel, true))
+        }
         for (let prop of props) {
           callbacks.push(...writeProp(writer, prop))
         }
@@ -92,22 +95,20 @@ function writeProps(
 
 function writeProp(
   writer: ts.CodeBlockWriter,
-  prop: {
-    declaration: ts.PropertyDeclaration
-    required?: ts.PropertyAssignment
-    default?: ts.PropertyAssignment
-  }
+  prop: DeclassifyPropWithDeclaration,
+  isVModel: boolean = false
 ): PostprocessCallback[] {
   const callbacks: PostprocessCallback[] = []
   writeDocs(writer, prop.declaration.getJsDocs())
 
+  const name: string = isVModel?'value':prop.declaration.getName();
   writer
-    .write(`${prop.declaration.getName()}:`)
+    .write(`${name}:`)
     .space()
     .write('{')
     .withIndentationLevel(1, () => {
       callbacks.push(...writePropType(writer, prop.declaration))
-      writePropOptions(writer, prop)
+      writePropOptions(writer, prop, isVModel)
     })
     .writeLine('},')
 
@@ -193,9 +194,9 @@ function writePropOptions(
     writer.write(options.required.getText())
 
   } else {
-
-    // Lastly, if neither property is directly supplied, mark `required` false.
-    writer.write('required: false')
+    // Lastly, if neither property is directly supplied, mark `required` with default value.
+    const defaultRequiredValue = isVModel?'true':'false';
+    writer.write(`required: ${defaultRequiredValue}`)
   }
 
   writer
@@ -254,18 +255,19 @@ function writeDataProperty(
 
 function writeComputed(
   writer: ts.CodeBlockWriter,
-  computed: Record<string, {
-    getter?: ts.GetAccessorDeclaration
-    setter?: ts.SetAccessorDeclaration
-  }>
+  computed: DeclassifyComputed,
+  vModel: DeclassifyPropWithDeclaration | null
 ) {
-  if (Object.keys(computed).length > 0) {
+  if (Object.keys(computed).length > 0 || vModel) {
     writer
       .write('computed:')
       .space()
       .write('{')
       .newLine()
-  
+
+    if (vModel) {
+      writeComputedPropertyForVModel(writer, vModel.declaration.getName(), vModel.declaration.getType().getText())
+    }
     for (const [name, { getter, setter }] of Object.entries(computed)) {
       if (getter) {
         if (!setter) {
@@ -276,9 +278,59 @@ function writeComputed(
         }
       }
     }
-      
+
     writer.writeLine('},')
   }
+}
+
+function writeGetter(writer: ts.CodeBlockWriter, type: string, body: string ) {
+  writer
+    .write(`get()`)
+    .write(':')
+    .space()
+    .write(type)
+    .newLine()
+    .write(body)
+    .write(',')
+    .newLine()
+}
+
+function writeSetter(writer: ts.CodeBlockWriter, paramName: string, body: string) {
+  writer
+    .write('set(')
+    .write(paramName)
+    .write(')')
+    .newLine()
+    .write(body)
+    .write(',')
+    .newLine()
+}
+
+function writeProperty(writer: ts.CodeBlockWriter, name: string, action: () => void) {
+  writer
+    .write(name)
+    .write(':')
+    .space()
+    .write('{')
+    .newLine()
+    .withIndentationLevel(1, action)
+    .writeLine('},')
+}
+
+function writeComputedPropertyForVModel(
+  writer: ts.CodeBlockWriter,
+  name: string,
+  type: string
+) {
+  const action = () => {
+    writeGetter(writer, type, `{
+      return this.value;
+    }`);
+    writeSetter(writer, 'value', `{
+      this.$emit('input', value);
+    }`);
+  };
+  writeProperty(writer, name, action);
 }
 
 function writeComputedProperty(
@@ -287,47 +339,25 @@ function writeComputedProperty(
   getter: ts.GetAccessorDeclaration,
   setter: ts.SetAccessorDeclaration
 ) {
-  writer
-    .write(name)
-    .write(':')
-    .space()
-    .write('{')
-    .newLine()
-    .withIndentationLevel(1, () => {
-      const setParameter = setter.getParameters()[0]
+  writeProperty(writer, name, () => {
+    const setParameter = setter.getParameters()[0]
 
-      if (!setParameter) {
-        throw new Error('Computed setter doesn\'t seem to have a parameter.')
-      }
+    if (!setParameter) {
+      throw new Error('Computed setter doesn\'t seem to have a parameter.')
+    }
 
-      writeDocs(writer, getter.getJsDocs())
-      writer
-        .write(`get()`)
-        .write(':')
-        .space()
-        // Computed property getters need to match the setter's return type,
-        // But there's actually a variety of places this can be obtained...
-        // try them all before giving up with `any`.
-        .write(getter.getReturnTypeNode()?.getText() 
-            || setParameter.getTypeNode()?.getText() 
-            || 'any')
-        .newLine()
-        .write(getter.getBodyOrThrow().getText())
-        .write(',')
-        .newLine()
+    writeDocs(writer, getter.getJsDocs())
+    // Computed property getters need to match the setter's return type,
+    // But there's actually a variety of places this can be obtained...
+    // try them all before giving up with `any`.
+    writeGetter(writer, getter.getReturnTypeNode()?.getText()
+      ?? setParameter.getTypeNode()?.getText()
+      ?? 'any', getter.getBodyOrThrow().getText());
 
-      writeDocs(writer, setter.getJsDocs())
-      writer
-        .write('set(')
-        .write(setParameter.getText())
-        .write(')')
-        .newLine()
-        .write(setter.getBodyOrThrow().getText())
-        .write(',')
-        .newLine()
-    })
-    .writeLine('},')
-  }
+    writeDocs(writer, setter.getJsDocs())
+    writeSetter(writer, setParameter.getText(), setter.getBodyOrThrow().getText());
+  });
+}
 
 function writeComputedGetter(
   writer: ts.CodeBlockWriter,
@@ -481,9 +511,9 @@ export function classToObject(source: ts.SourceFile) {
         .withIndentationLevel(1, () => {
           writeName(writer, declaration)
           writeConfig(writer, decorator)
-          callbacks.push(...writeProps(writer, props))
+          callbacks.push(...writeProps(writer, props, vModel))
           writeData(writer, data)
-          writeComputed(writer, computed)
+          writeComputed(writer, computed, vModel)
           writeWatches(writer, watches)
           writeMethods(writer, methods)
         })

@@ -241,7 +241,17 @@ function unpackClass(declaration: ClassDeclaration): DeclassifyClass {
             declaration: property,
             ...unpackPropDecorator(decorator),
           })
-  
+
+          continue // Processed it, so continue.
+        }
+      }
+      {
+        const decorator = property.getDecorator('VModel')
+        if (decorator) {
+          vModel = {
+            declaration: property,
+            ...unpackPropDecorator(decorator),
+          }
           continue // Processed it, so continue.
         }
       }
