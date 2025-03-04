@@ -1,6 +1,7 @@
 import * as ts from 'ts-morph'
 import * as vue_class from './vue_class'
 import * as imports from './imports'
+import {DeclassifyComputed, DeclassifyProp, DeclassifyPropWithDeclaration, DeclassifyWatch} from "../declassify";
 
 type PostprocessCallback = (source: ts.SourceFile) => void
 
@@ -66,12 +67,9 @@ function writeConfig(
 }
 
 function writeProps(
-  writer: ts.CodeBlockWriter, 
-  props: {
-    declaration: ts.PropertyDeclaration
-    required?: ts.PropertyAssignment
-    default?: ts.PropertyAssignment
-  }[]
+  writer: ts.CodeBlockWriter,
+  props: DeclassifyPropWithDeclaration[],
+  vModel: DeclassifyPropWithDeclaration | null
 ): PostprocessCallback[] {
   const callbacks: PostprocessCallback[] = []
 
@@ -181,12 +179,10 @@ function writePropType(
 
 function writePropOptions(
   writer: ts.CodeBlockWriter,
-  options: {
-    required?: ts.PropertyAssignment
-    default?: ts.PropertyAssignment
-  }
+  options: DeclassifyProp,
+  isVModel: boolean = false
 ) {
-    
+
   // Only permit exactly one of `default` and `required`,
   // since a default value implies required is false in Vue.
   // There actually doesn't seem to be a use-case to set both!
@@ -396,12 +392,7 @@ function writeMethod(
 
 function writeWatches(
   writer: ts.CodeBlockWriter,
-  watches: {
-    path: string,
-    method: string,
-    immediate?: string
-    deep?: string
-  }[]
+  watches: DeclassifyWatch[]
 ) {
   if (watches.length > 0) {
     writer
@@ -420,12 +411,7 @@ function writeWatches(
 
 function writeWatch(
   writer: ts.CodeBlockWriter,
-  watch: {
-    path: string,
-    method: string,
-    immediate?: string,
-    deep?: string,
-  }
+  watch: DeclassifyWatch
 ) {
   writer
     .quote()
@@ -478,6 +464,7 @@ export function classToObject(source: ts.SourceFile) {
     methods,
     syncProps,
     watches,
+    vModel
   } = vue
 
   const callbacks: PostprocessCallback[] = [

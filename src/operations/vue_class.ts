@@ -14,9 +14,21 @@ import {
   SyntaxKind,
   ts
 } from 'ts-morph'
+import {
+  DeclassifyClass,
+  DeclassifyClassWithDeclaration,
+  DeclassifyComponentDecorator,
+  DeclassifyComputed,
+  DeclassifyProp,
+  DeclassifyPropSync,
+  DeclassifyPropSyncWithDeclaration,
+  DeclassifyPropWithDeclaration,
+  DeclassifyWatch
+} from "../declassify";
 import { kebabCase } from 'tiny-case'
 
-function unpackComponentDecorator(decorator: Decorator) {
+
+function unpackComponentDecorator(decorator: Decorator): DeclassifyComponentDecorator {
   const decoratorArguments = decorator.getArguments()
 
   if (decoratorArguments.length > 0) {
@@ -36,11 +48,8 @@ function unpackComponentDecorator(decorator: Decorator) {
   }
 }
 
-function unpackPropDecorator(decorator: Decorator, argumentIndex = 0) {
-  const configuration: {
-    required?: PropertyAssignment
-    default?: PropertyAssignment
-  } = {}
+function unpackPropDecorator(decorator: Decorator, argumentIndex = 0): DeclassifyProp {
+  const configuration: DeclassifyProp = {}
 
   const decoratorArguments = decorator.getArguments()
 
@@ -75,7 +84,7 @@ function unpackPropDecorator(decorator: Decorator, argumentIndex = 0) {
   return configuration
 }
 
-function unpackPropSyncDecorator(decorator: Decorator) {
+function unpackPropSyncDecorator(decorator: Decorator): DeclassifyPropSync {
   const decoratorArguments = decorator.getArguments()
 
   if (decoratorArguments.length === 0) {
@@ -94,7 +103,7 @@ function unpackPropSyncDecorator(decorator: Decorator) {
   }
 }
 
-function unpackWatchDecorator(decorator: Decorator) {
+function unpackWatchDecorator(decorator: Decorator): DeclassifyWatch {
   const decoratorArguments = decorator.getArguments()
 
   if (decoratorArguments.length === 0) {
@@ -107,11 +116,7 @@ function unpackWatchDecorator(decorator: Decorator) {
     throw new Error('The first argument to @Watch is not a string literal.')
   }
 
-  const configuration: {
-    path: string
-    deep?: string
-    immediate?: string
-  } = {
+  const configuration: DeclassifyWatch = {
     path: watchPathArgument.getLiteralValue(),
   }
 
@@ -161,7 +166,7 @@ function rewriteEmitDecorator(method: MethodDeclaration, decorator: Decorator) {
     eventName = nameLiteral.getLiteralValue()
   } else {
     eventName = method.getName()
-    
+
     // Per the documentation, when using the function as the event name, it is rewritten using kebab-case.
     eventName = kebabCase(eventName)
   }
@@ -212,40 +217,25 @@ function rewriteEmitDecorator(method: MethodDeclaration, decorator: Decorator) {
 }
 
 // Unpacks a Vue class declaration into its Vue properties.
-function unpackClass(declaration: ClassDeclaration) {
-  const props: {
-    declaration: PropertyDeclaration
-    default?: PropertyAssignment
-    required?: PropertyAssignment
-  }[] = []
+function unpackClass(declaration: ClassDeclaration): DeclassifyClass {
+  const props: DeclassifyPropWithDeclaration[] = []
 
-  const syncProps: {
-    declaration: PropertyDeclaration
-    sync: string
-    default?: PropertyAssignment
-    required?: PropertyAssignment
-  }[] = []
+  const syncProps: DeclassifyPropSyncWithDeclaration[] = []
 
   const data: PropertyDeclaration[] = []
   const methods: MethodDeclaration[] = []
-  
-  const computed: Record<string, {
-    getter?: GetAccessorDeclaration
-    setter?: SetAccessorDeclaration
-  }> = {}
 
-  const watches: {
-    path: string
-    method: string
-    immediate?: string
-    deep?: string
-  }[] = []
+  const computed: DeclassifyComputed = {}
+
+  const watches: DeclassifyWatch[] = []
+
+  let vModel: DeclassifyPropWithDeclaration | null = null;
 
   for (const property of declaration.getInstanceProperties()) {
     if (property instanceof PropertyDeclaration) {
       {
         const decorator = property.getDecorator('Prop')
-        
+
         if (decorator) {
           props.push({
             declaration: property,
@@ -321,12 +311,13 @@ function unpackClass(declaration: ClassDeclaration) {
     computed,
     methods,
     watches,
+    vModel
   }
 }
 
 // Extracts all Vue properties from the Vue class in a source file.
 // Mostly responsible for implementing the various decorators.
-export function extract(source: SourceFile) {
+export function extract(source: SourceFile): DeclassifyClassWithDeclaration | undefined {
   const defaultExport = source.getDefaultExportSymbol()
 
   if (!defaultExport) {
