@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "commander": "^6.2.0",
+    "tiny-case": "1.0.3",
     "ts-morph": "^9.1.0"
   },
   "devDependencies": {

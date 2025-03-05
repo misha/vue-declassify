@@ -824,7 +824,7 @@ export default Vue.extend({
   methods: {
     onGreet() {
       console.log('Hello, world!')
-      this.$emit('onGreet')
+      this.$emit('on-greet')
     },
   },
 });
@@ -909,7 +909,7 @@ export default Vue.extend({
   methods: {
     onGreet(name: string) {
       console.log(\`Hello, \${name}!\`)
-      this.$emit('onGreet', name)
+      this.$emit('on-greet', name)
       this.$emit('greet', name)
     },
   },

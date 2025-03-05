@@ -14,6 +14,7 @@ import {
   SyntaxKind,
   ts
 } from 'ts-morph'
+import { kebabCase } from 'tiny-case'
 
 function unpackComponentDecorator(decorator: Decorator) {
   const decoratorArguments = decorator.getArguments()
@@ -160,6 +161,9 @@ function rewriteEmitDecorator(method: MethodDeclaration, decorator: Decorator) {
     eventName = nameLiteral.getLiteralValue()
   } else {
     eventName = method.getName()
+    
+    // Per the documentation, when using the function as the event name, it is rewritten using kebab-case.
+    eventName = kebabCase(eventName)
   }
 
   // Determine which return statements are top-level by iteratively looking at their parent nodes.
