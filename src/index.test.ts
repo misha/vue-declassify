@@ -1032,3 +1032,55 @@ export default Vue.extend({
 
   validate(t, source, truth)
 })
+
+test('converts v-model to prop value with computed getter/setter', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+
+  @VModel()
+  message!: string
+
+  setMessage() {
+    this.message = "set";
+  }
+
+  loggingMessage() {
+    console.log("loggingMessage", this.message)
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+export default Vue.extend({
+  name: 'Component',
+  props: {
+    value: {
+      type: String,
+      required: true,
+    },
+  },
+  computed: {
+    message: {
+      get(): string {
+        return this.value;
+      },
+      set(value) {
+        this.$emit('input', value);
+      },
+    },
+  },
+  methods: {
+    setMessage() {
+      this.message = "set";
+    },
+    loggingMessage() {
+      console.log("loggingMessage", this.message)
+    },
+  },
+});
+  `
+
+  validate(t, source, truth)
+})
