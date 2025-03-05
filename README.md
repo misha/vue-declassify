@@ -27,7 +27,7 @@ Here's the plan for the project:
 - [x] `@Component`
 - [x] `@Prop`
 - [x] `@Watch`
-- [x] `@Emit` (contributed by [@LeVoMihalcea](https://github.com/LeVoMihalcea))
+- [x] `@Emit` (contributed by [@mfillon](https://github.com/mfillon), [@LeVoMihalcea](https://github.com/LeVoMihalcea))
 - [ ] `@PropSync`
 - [x] JSDocs for all of the above
 
