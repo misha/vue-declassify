@@ -148,16 +148,51 @@ function unpackWatchDecorator(decorator: Decorator) {
 // Immediately rewrites @Emit by appending it to the end of its function.
 function rewriteEmitDecorator(method: MethodDeclaration, decorator: Decorator) {
   const [nameLiteral] = decorator.getArguments()
+
   // The name for @Emit is either the decorator's first argument, or defaults to the method name.
-  let name: string
+  let eventName: string
 
   if (nameLiteral) {
     if (!(nameLiteral instanceof StringLiteral)) {
       throw new Error('The first argument to @Emit must be a string literal.')
     }
-    name = nameLiteral.getLiteralValue()
+
+    eventName = nameLiteral.getLiteralValue()
   } else {
-    name = method.getName()
+    eventName = method.getName()
+  }
+
+  // Determine which return statements are top-level by iteratively looking at their parent nodes.
+  const toplevelReturns = method
+    .getDescendantsOfKind(SyntaxKind.ReturnStatement)
+    .filter(statement => {
+      let parent: NodeParentType<ts.Node> = statement.getParent()
+
+      while (parent) {
+        if (Node.isScopedNode(parent)) {
+          // The definition of top-level: the closest scoped parent node is the decorated method.
+          return parent === method
+        }
+
+        parent = parent.getParent()
+      }
+
+      return false
+    })
+
+  if (toplevelReturns.length > 0) {
+    method.setIsAsync(true)
+
+    for (const statement of toplevelReturns) {
+      if (statement.wasForgotten()) {
+        continue
+      }
+
+      const expression = statement.getExpressionOrThrow()
+      statement.replaceWithText(`this.$emit('${eventName}', await ${expression.getText()})\nreturn`)
+    }
+
+    return
   }
 
   const parameters = method
@@ -165,53 +200,11 @@ function rewriteEmitDecorator(method: MethodDeclaration, decorator: Decorator) {
     .map(parameter => parameter.getName())
     .join(', ')
 
-  const bodyText = method.getBodyText();
-  const hasReturnValue = method.getDescendantsOfKind(SyntaxKind.ReturnStatement).length > 0;
-
-  let newBodyText: string;
-
-  if (hasReturnValue) {
-    newBodyText = replaceReturnsExceptInNestedFunctions(method, name);
-  } else if (parameters) {
-    newBodyText = `${bodyText}\nthis.$emit('${name}', ${parameters})`
+  if (parameters) {
+    method.setBodyText(`${method.getBodyText()}\nthis.$emit('${eventName}', ${parameters})`)
   } else {
-    newBodyText = `${bodyText}\nthis.$emit('${name}')`
+    method.setBodyText(`${method.getBodyText()}\nthis.$emit('${eventName}')`)
   }
-  method.setBodyText(newBodyText)
-}
-
-function replaceReturnsExceptInNestedFunctions(methodDeclaration: MethodDeclaration, eventName: string): string {
-  const body = methodDeclaration.getBody();
-  if (!body) return "";
-
-  const allReturnStatements = methodDeclaration.getDescendantsOfKind(SyntaxKind.ReturnStatement);
-
-  const returnsToReplace = allReturnStatements.filter(returnStmt => {
-    let parent: NodeParentType<ts.Node> = returnStmt.getParent();
-
-    while (parent && parent !== body) {
-      if (
-        Node.isFunctionDeclaration(parent) ||
-        Node.isArrowFunction(parent) ||
-        Node.isFunctionExpression(parent) ||
-        Node.isMethodDeclaration(parent) && parent !== methodDeclaration
-      ) {
-        return false;
-      }
-      parent = parent.getParent();
-    }
-    return true;
-  });
-  //we should only set method as async if return type is a Promise but testing that with ts-morph seems unreliable
-  methodDeclaration.setIsAsync(true);
-  for (const returnStmt of returnsToReplace) {
-    const expression = returnStmt.getExpression();
-    if (expression) {
-      const replacementText = `this.$emit('${eventName}', await ${expression.getText()})\nreturn`;
-      returnStmt.replaceWithText(replacementText);
-    }
-  }
-  return methodDeclaration.getBodyText() ?? "";
 }
 
 // Unpacks a Vue class declaration into its Vue properties.

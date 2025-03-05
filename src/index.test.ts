@@ -919,7 +919,7 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test('converts emits on functions with return value', t => {
+test('converts emits with return statements correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
@@ -927,9 +927,11 @@ export default class Component extends Vue {
   @Emit('greet')
   onGreet(name: string) {
     console.log(\`Hello, \${name}!\`)
+
     if (!name) {
       return "Hello, you!"
     }
+
     return \`Hello, \${name}!\`
   }
 }
@@ -942,10 +944,12 @@ export default Vue.extend({
   methods: {
     async onGreet(name: string) {
       console.log(\`Hello, \${name}!\`)
+
       if (!name) {
         this.$emit('greet', await "Hello, you!")
         return
       }
+
       this.$emit('greet', await \`Hello, \${name}!\`)
       return
     },
@@ -956,7 +960,7 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test('converts emits on functions with return value ignoring nested returns', t => {
+test('converts emits with nested return statements correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
@@ -964,11 +968,13 @@ export default class Component extends Vue {
   @Emit('greet')
   onGreet(name: string) {
     console.log(\`Hello, \${name}!\`)
+
     if (!name) {
       return () => {
         return "Hello, you!"
       }
     }
+
     return \`Hello, \${name}!\`
   }
 }
@@ -981,12 +987,14 @@ export default Vue.extend({
   methods: {
     async onGreet(name: string) {
       console.log(\`Hello, \${name}!\`)
+
       if (!name) {
         this.$emit('greet', await () => {
           return "Hello, you!"
         })
         return
       }
+
       this.$emit('greet', await \`Hello, \${name}!\`)
       return
     },
@@ -997,15 +1005,14 @@ export default Vue.extend({
   validate(t, source, truth)
 })
 
-test('converts emits on functions with return value as Promise', t => {
+test('converts emits on asynchronous functions with return statements correctly', t => {
   const source = `
 @Component
 export default class Component extends Vue {
   
   @Emit('greet')
-  onGreet() {
-    const promiseReturn = Promise.resolve("Hello")
-    return promiseReturn
+  async onGreet() {
+    return await Promise.resolve('hello')
   }
 }
   `
@@ -1016,8 +1023,7 @@ export default Vue.extend({
   name: 'Component',
   methods: {
     async onGreet() {
-      const promiseReturn = Promise.resolve("Hello")
-      this.$emit('greet', await promiseReturn)
+      this.$emit('greet', await await Promise.resolve('hello'))
       return
     },
   },
