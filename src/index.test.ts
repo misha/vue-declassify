@@ -1032,3 +1032,91 @@ export default Vue.extend({
 
   validate(t, source, truth)
 })
+
+test('converts v-model correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+
+  @VModel()
+  message!: string
+}
+    `
+  
+    const truth = `
+import Vue from 'vue';
+export default Vue.extend({
+  name: 'Component',
+  props: {
+    value: {
+      type: String,
+      required: true,
+    },
+  },
+  computed: {
+    message: {
+      get() {
+        return this.value
+      },
+      set(value) {
+        this.$emit('input', value)
+      },
+    },
+  },
+});
+  `
+
+  validate(t, source, truth)
+})
+
+test('converts a mix of v-model and methods correctly', t => {
+  const source = `
+@Component
+export default class Component extends Vue {
+  
+  @VModel()
+  message!: string
+
+  setMessage() {
+    this.message = 'set'
+  }
+
+  loggingMessage() {
+    console.log('loggingMessage', this.message)
+  }
+}
+  `
+
+  const truth = `
+import Vue from 'vue';
+export default Vue.extend({
+  name: 'Component',
+  props: {
+    value: {
+      type: String,
+      required: true,
+    },
+  },
+  computed: {
+    message: {
+      get() {
+        return this.value
+      },
+      set(value) {
+        this.$emit('input', value)
+      },
+    },
+  },
+  methods: {
+    setMessage() {
+      this.message = 'set'
+    },
+    loggingMessage() {
+      console.log('loggingMessage', this.message)
+    },
+  },
+});
+  `
+
+  validate(t, source, truth)
+})
