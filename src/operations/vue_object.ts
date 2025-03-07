@@ -71,6 +71,7 @@ function writeProps(
     declaration: ts.PropertyDeclaration
     required?: ts.PropertyAssignment
     default?: ts.PropertyAssignment
+    vmodel: boolean
   }[]
 ): PostprocessCallback[] {
   const callbacks: PostprocessCallback[] = []
@@ -98,13 +99,19 @@ function writeProp(
     declaration: ts.PropertyDeclaration
     required?: ts.PropertyAssignment
     default?: ts.PropertyAssignment
-  }
+    vmodel: boolean
+  },
 ): PostprocessCallback[] {
   const callbacks: PostprocessCallback[] = []
   writeDocs(writer, prop.declaration.getJsDocs())
+  let name = prop.declaration.getName()
+  
+  if (prop.vmodel) {
+    name = 'value'
+  }
 
   writer
-    .write(`${prop.declaration.getName()}:`)
+    .write(`${name}:`)
     .space()
     .write('{')
     .withIndentationLevel(1, () => {
@@ -182,6 +189,7 @@ function writePropType(
 function writePropOptions(
   writer: ts.CodeBlockWriter,
   options: {
+    declaration: ts.PropertyDeclaration,
     required?: ts.PropertyAssignment
     default?: ts.PropertyAssignment
   }
@@ -195,6 +203,11 @@ function writePropOptions(
 
   } else if (options.required) {
     writer.write(options.required.getText())
+
+  } else if (options.declaration.hasExclamationToken()) {
+    
+    // Allow ! to indicate implicitly that the prop is required.
+    writer.write('required: true')
 
   } else {
 
@@ -258,18 +271,23 @@ function writeDataProperty(
 
 function writeComputed(
   writer: ts.CodeBlockWriter,
+  vmodel: ts.PropertyDeclaration | undefined,
   computed: Record<string, {
     getter?: ts.GetAccessorDeclaration
     setter?: ts.SetAccessorDeclaration
   }>
 ) {
-  if (Object.keys(computed).length > 0) {
+  if (vmodel || Object.keys(computed).length > 0) {
     writer
       .write('computed:')
       .space()
       .write('{')
       .newLine()
-  
+    
+    if (vmodel) {
+      writeComputedVModelProperty(writer, vmodel)
+    }
+
     for (const [name, { getter, setter }] of Object.entries(computed)) {
       if (getter) {
         if (!setter) {
@@ -283,6 +301,40 @@ function writeComputed(
       
     writer.writeLine('},')
   }
+}
+
+function writeComputedVModelProperty(
+  writer: ts.CodeBlockWriter,
+  property: ts.PropertyDeclaration,
+) {
+  writer
+    .write(property.getName())
+    .write(':')
+    .space()
+    .write('{')
+    .newLine()
+    .withIndentationLevel(1, () => {
+      writer
+        .write(`get() {`)
+        .newLine()
+        .withIndentationLevel(1, () => {
+          writer
+            .write('return this.value')
+            .newLine()
+        })
+        .writeLine('},')
+
+      writer
+        .write('set(value) {')
+        .newLine()
+        .withIndentationLevel(1, () => {
+          writer
+            .write('this.$emit(\'input\', value)')
+            .newLine()
+        })
+        .writeLine('},')
+    })
+    .writeLine('},')
 }
 
 function writeComputedProperty(
@@ -331,7 +383,7 @@ function writeComputedProperty(
         .newLine()
     })
     .writeLine('},')
-  }
+}
 
 function writeComputedGetter(
   writer: ts.CodeBlockWriter,
@@ -478,6 +530,7 @@ export function classToObject(source: ts.SourceFile) {
     methods,
     syncProps,
     watches,
+    vmodel,
   } = vue
 
   const callbacks: PostprocessCallback[] = [
@@ -496,7 +549,7 @@ export function classToObject(source: ts.SourceFile) {
           writeConfig(writer, decorator)
           callbacks.push(...writeProps(writer, props))
           writeData(writer, data)
-          writeComputed(writer, computed)
+          writeComputed(writer, vmodel, computed)
           writeWatches(writer, watches)
           writeMethods(writer, methods)
         })

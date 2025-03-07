@@ -217,6 +217,7 @@ function unpackClass(declaration: ClassDeclaration) {
     declaration: PropertyDeclaration
     default?: PropertyAssignment
     required?: PropertyAssignment
+    vmodel: boolean
   }[] = []
 
   const syncProps: {
@@ -241,8 +242,29 @@ function unpackClass(declaration: ClassDeclaration) {
     deep?: string
   }[] = []
 
+  let vmodel: PropertyDeclaration | undefined
+
   for (const property of declaration.getInstanceProperties()) {
     if (property instanceof PropertyDeclaration) {
+      {
+        const decorator = property.getDecorator('VModel')
+        
+        if (decorator) {
+          if (vmodel) {
+            throw new Error('Multiple @VModel properties were detected.')
+          }
+
+          props.push({
+            declaration: property,
+            ...unpackPropDecorator(decorator),
+            vmodel: true,
+          })
+  
+          vmodel = property
+          continue // Processed it, so continue.
+        }
+      }
+
       {
         const decorator = property.getDecorator('Prop')
         
@@ -250,6 +272,7 @@ function unpackClass(declaration: ClassDeclaration) {
           props.push({
             declaration: property,
             ...unpackPropDecorator(decorator),
+            vmodel: false,
           })
   
           continue // Processed it, so continue.
@@ -321,6 +344,7 @@ function unpackClass(declaration: ClassDeclaration) {
     computed,
     methods,
     watches,
+    vmodel,
   }
 }
 
