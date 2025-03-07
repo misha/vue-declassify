@@ -29,6 +29,7 @@ Here's the plan for the project:
 - [x] `@Watch`
 - [x] `@Emit` (contributed by [@mfillon](https://github.com/mfillon), [@LeVoMihalcea](https://github.com/LeVoMihalcea))
 - [ ] `@PropSync`
+- [x] `@VModel` (contributed by [@mfillon](https://github.com/mfillon))
 - [x] JSDocs for all of the above
 
 I'm not currently planning to support `@Inject`, `@Provide`, `@InjectReactive`, and `@ProvideReactive`. Although, if you do need them, make an issue and I'll implement it.
